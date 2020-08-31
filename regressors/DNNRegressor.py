@@ -7,6 +7,7 @@ from utils.AwesomeTimeIt import timeit
 from utils.RegressionReport import evaluate_regression
 from utils.FeatureImportanceReport import report_feature_importance
 from utils.PlotLosses import PlotLosses
+from utils.ModelInterpreters import shap_deep_regression, FIIL
 
 import keras
 from keras.models import Sequential, load_model
@@ -16,6 +17,8 @@ from keras.layers import Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 from keras.regularizers import l1, l2
 from keras.models import model_from_json
+
+from sklearn.metrics.regression import mean_squared_error
 
 import matplotlib.pyplot as plt
 
@@ -220,6 +223,10 @@ class DNNR(BaseModel):
         evaluate_regression(self.directory, self.Y_cv, y_pred_cv, self.dates_cv, 'DNN-OnCV', self.log, slicer=slicer)
         evaluate_regression(self.directory, self.Y_test, y_pred_test, self.dates_test, 'DNN-OnTest', self.log, slicer=slicer)
 
+        shap_deep_regression(self.directory, self.model, x_train, x_test, cols, num_top_features = self.n_top_features, self.log, label = 'DNN-OnTest')
+        FIIL(self.directory, self.model, mean_squared_error,
+            self.X_test, self.Y_test, self.n_top_features,
+            n_simulations = 10, label = "FIIL", self.log)
         
         
 @timeit
