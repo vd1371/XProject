@@ -1,0 +1,10 @@
+__pycache__/
+Plutus/
+Test.py
+XReport/
+_data_storage/*
+!_data_storage/Boston.csv
+AutoEncoder/*
+!AutoEncoder/AutoEncoder.py
+outlier_detection/*
+!outlier_detection/MultivariateGaussian.py
