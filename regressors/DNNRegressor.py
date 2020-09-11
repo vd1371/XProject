@@ -80,6 +80,17 @@ class DNNR(BaseModel):
     def set_optimizer(self,val):
         self.optimizer = val
 
+    def _get_call_bakcs(self):
+        # Creating Early Stopping function and other callbacks
+        call_back_list = []
+        early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
+        plot_losses = PlotLosses()
+    
+        if self.should_early_stop:
+            call_back_list.append(early_stopping)
+        if self.should_plot_live_error:
+            call_back_list.append(plot_losses)
+
     def _construct_model(self, reg = None):
 
         if reg is None:
@@ -93,18 +104,8 @@ class DNNR(BaseModel):
          
         # Compile model
         model.compile(loss=self.loss_func, optimizer=self.optimizer)
-         
-        # Creating Early Stopping function and other callbacks
-        call_back_list = []
-        early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-        plot_losses = PlotLosses()
-    
-        if self.should_early_stop:
-            call_back_list.append(early_stopping)
-        if self.should_plot_live_error:
-            call_back_list.append(plot_losses)
 
-        return model, call_back_list
+        return model
     
     @timeit
     def run_learning_curve(self, steps = 10):
@@ -123,7 +124,7 @@ class DNNR(BaseModel):
             Y_train = self.Y_train[:indexer]
              
             #creating the structure of the neural network
-            model, call_back_list = self._construct_model(reg = 0)
+            model, call_back_list = self._construct_model(reg = 0), self._get_call_bakcs()
             
             # Fit the model
             model.fit(X_train.values, Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
@@ -148,7 +149,8 @@ class DNNR(BaseModel):
             
             xticks.append(f"{reg:.2E}")
             #creating the structure of the neural network
-            model, call_back_list = self._construct_model(reg = reg)
+            model = self._construct_model(reg = reg)
+            call_back_list = self._get_call_bakcs()
                 
             # Fit the model
             model.fit(self.X_train.value, self.Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
@@ -165,52 +167,58 @@ class DNNR(BaseModel):
         
         
         
-    def fit_model(self, drop = 0.1):
-        
-        # #creating the structure of the neural network
-        model, call_back_list = self._construct_model()
-         
-        # Creating Early Stopping function and other callbacks
-        call_back_list = []
-        early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-        plot_losses = PlotLosses()
-    
-        if self.should_early_stop:
-            call_back_list.append(early_stopping)
-        if self.should_plot_live_error:
-            call_back_list.append(plot_losses)
-        
-        # a summary of the model
-        stringlist = []
-        model.summary(print_fn=lambda x: stringlist.append(x))
-        short_model_summary = "\n".join(stringlist)
-        self.log.info(short_model_summary)
+    def fit_model(self, drop = 0.1, warm_up = False):
+
+        constructed = False
+        if warm_up:
+            try:
+                self.load_model()
+                constructed = True
+            except OSError:
+                print ("The model is not trained before. No saved models found")
+
+        if not constructed:
+            # Creating the structure of the neural network
+            self.model = self._construct_model()
+            
+            # A summary of the model
+            stringlist = []
+            self.model.summary(print_fn=lambda x: stringlist.append(x))
+            short_model_summary = "\n".join(stringlist)
+            self.log.info(short_model_summary)
+
+        call_back_list = self._get_call_bakcs()
         
         # Fit the model
-        model.fit(self.X_train.values, self.Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, verbose = 2, shuffle=True, callbacks=call_back_list)
-        plot_losses.closePlot()
+        self.model.fit(self.X_train.values, self.Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, verbose = 2, shuffle=True, callbacks=call_back_list)
+        
+        # Closing the plot losses
+        try:
+            for call_back in call_back_list:
+                call_back.closePlot()
+        except:
+            pass
         
         # Evaluate the model
-        train_scores = model.evaluate(self.X_train.values, self.Y_train.values, verbose=2)
-        cv_scores = model.evaluate(self.X_cv, self.Y_cv, verbose=2)
-        test_scores = model.evaluate(self.X_test, self.Y_test, verbose=2)
+        train_scores = self.model.evaluate(self.X_train.values, self.Y_train.values, verbose=2)
+        cv_scores = self.model.evaluate(self.X_cv, self.Y_cv, verbose=2)
+        test_scores = self.model.evaluate(self.X_test, self.Y_test, verbose=2)
             
         print ()
         print (f'Trian_err: {train_scores:.2f}, Cv_err: {cv_scores:.2f}, Test_err: {test_scores:.2f}')
         self.log.info(f'Trian_err: {train_scores:.2f}, Cv_err: {cv_scores:.2f}, Test_err: {test_scores:2f}')
 
-        self.save_model(model)
+        self.save_model()
         
     def load_model(self):
         
         # load json and create model
         address = self.directory + "/" +  self.name
-        self.model = load_model(address+ ".h5")
-        self.model.compile(loss=self.loss_func, optimizer=self.optimizer)
+        self.model = load_model(address + "SavedModel.h5")
 
-    def save_model(self, model):
+    def save_model(self):
         save_address = self.directory + "/" + self.name 
-        model.save(save_address + ".h5")
+        self.model.save(save_address + "SavedModel.h5", save_format = 'h5')
 
         
     def get_report(self, slicer = 0.5):
@@ -219,14 +227,15 @@ class DNNR(BaseModel):
         y_pred_cv = self.model.predict(self.X_cv).reshape(1, -1)[0]
         y_pred_test = self.model.predict(self.X_test).reshape(1,-1)[0]
         
-        evaluate_regression(self.directory, self.Y_train, y_pred_train, self.dates_train, 'DNN-OnTrain', self.log, slicer=slicer)
-        evaluate_regression(self.directory, self.Y_cv, y_pred_cv, self.dates_cv, 'DNN-OnCV', self.log, slicer=slicer)
-        evaluate_regression(self.directory, self.Y_test, y_pred_test, self.dates_test, 'DNN-OnTest', self.log, slicer=slicer)
+        evaluate_regression(self.directory, self.X_train, self.Y_train, y_pred_train, self.dates_train, 'DNN-OnTrain', self.log, slicer=slicer)
+        evaluate_regression(self.directory, self.X_cv, self.Y_cv, y_pred_cv, self.dates_cv, 'DNN-OnCV', self.log, slicer=slicer)
+        evaluate_regression(self.directory, self.X_test, self.Y_test, y_pred_test, self.dates_test, 'DNN-OnTest', self.log, slicer=slicer)
 
-        shap_deep_regression(self.directory, self.model, x_train, x_test, cols, num_top_features = self.n_top_features, self.log, label = 'DNN-OnTest')
+        shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
+                            self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
         FIIL(self.directory, self.model, mean_squared_error,
             self.X_test, self.Y_test, self.n_top_features,
-            n_simulations = 10, label = "FIIL", self.log)
+            10, self.log, "FIIL")
         
         
 @timeit

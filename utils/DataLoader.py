@@ -26,6 +26,8 @@ class DataLoader():
         else:
             raise ValueError ("Unsupported input format for dataloader. It should be str or DataFrame")
 
+        print ("data is loaded")
+
 
     def load_with_test(self):
 

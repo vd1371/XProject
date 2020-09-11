@@ -36,8 +36,8 @@ class SVMR(BaseModel):
             report_feature_importance(self.directory, self.model.coef_[0], self.X_train.columns,
                                     self.n_top_features, 'SVR', self.log)
 
-        evaluate_regression(self.directory, self.Y_train, self.model.predict(self.X_train), self.dates_train, 'SVR-OnTrain', self.log, slicer = 1)
-        evaluate_regression(self.directory, self.Y_test, self.model.predict(self.X_test), self.dates_test, 'SVR-OnTest', self.log, slicer = 1)
+        evaluate_regression(self.directory, self.X_train, self.Y_train, self.model.predict(self.X_train), self.dates_train, 'SVR-OnTrain', self.log, slicer = 1)
+        evaluate_regression(self.directory, self.X_test, self.Y_test, self.model.predict(self.X_test), self.dates_test, 'SVR-OnTest', self.log, slicer = 1)
 
         joblib.dump(self.model, self.directory + f"/SVR.pkl")
     
