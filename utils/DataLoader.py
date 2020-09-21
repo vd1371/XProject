@@ -7,7 +7,7 @@ class DataLoader():
     def __init__(self, df,
                         split_size = 0.2, should_shuffle=True,
                         is_imbalanced=False, random_state = None,
-                        k = 5, n_top_features = 5):
+                        k = 5, n_top_features = 5, n_samples = None):
 
         self.split_size = split_size
         self.random_state = random_state
@@ -25,6 +25,9 @@ class DataLoader():
 
         else:
             raise ValueError ("Unsupported input format for dataloader. It should be str or DataFrame")
+
+        if not n_samples is None:
+            self.df = self.df.iloc[:n_samples, :]
 
         print ("data is loaded")
 

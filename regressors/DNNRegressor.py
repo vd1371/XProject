@@ -153,7 +153,11 @@ class DNNR(BaseModel):
             call_back_list = self._get_call_bakcs()
                 
             # Fit the model
-            model.fit(self.X_train.value, self.Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
+            model.fit(self.X_train.value, self.Y_train.values,
+                        validation_data=(self.X_cv, self.Y_cv),
+                        epochs=self.epochs,
+                        batch_size=self.batch_size,
+                        shuffle=True, verbose=2, callbacks=call_back_list)
             plot_losses = PlotLosses(reg)
             
             train_errors.append(model.evaluate(X_train, Y_train, verbose=0))
@@ -174,6 +178,7 @@ class DNNR(BaseModel):
             try:
                 self.load_model()
                 constructed = True
+                self.log.info("\n\n------------\nA trained model is loade\n------------\n\n")
             except OSError:
                 print ("The model is not trained before. No saved models found")
 
@@ -189,8 +194,17 @@ class DNNR(BaseModel):
 
         call_back_list = self._get_call_bakcs()
         
+        import time
+        start = time.time()
         # Fit the model
-        self.model.fit(self.X_train.values, self.Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, verbose = 2, shuffle=True, callbacks=call_back_list)
+        self.model.fit(self.X_train.values, self.Y_train.values,
+                            validation_data=(self.X_cv, self.Y_cv),
+                            epochs=self.epochs,
+                            batch_size=self.batch_size,
+                            verbose = 2, shuffle=True, callbacks=call_back_list)
+
+        print (f"********* {time.time()-start:.4f} ***********")
+
         
         # Closing the plot losses
         try:
@@ -227,12 +241,18 @@ class DNNR(BaseModel):
         y_pred_cv = self.model.predict(self.X_cv).reshape(1, -1)[0]
         y_pred_test = self.model.predict(self.X_test).reshape(1,-1)[0]
         
-        evaluate_regression(self.directory, self.X_train, self.Y_train, y_pred_train, self.dates_train, 'DNN-OnTrain', self.log, slicer=slicer)
-        evaluate_regression(self.directory, self.X_cv, self.Y_cv, y_pred_cv, self.dates_cv, 'DNN-OnCV', self.log, slicer=slicer)
-        evaluate_regression(self.directory, self.X_test, self.Y_test, y_pred_test, self.dates_test, 'DNN-OnTest', self.log, slicer=slicer)
+        evaluate_regression(self.directory, self.X_train, self.Y_train,
+                            y_pred_train, self.dates_train, 'DNN-OnTrain',
+                            self.log, slicer=slicer, should_check_hetero = False)
+        evaluate_regression(self.directory, self.X_cv, self.Y_cv,
+                            y_pred_cv, self.dates_cv, 'DNN-OnCV',
+                            self.log, slicer=slicer, should_check_hetero = False)
+        evaluate_regression(self.directory, self.X_test, self.Y_test,
+                            y_pred_test, self.dates_test, 'DNN-OnTest',
+                            self.log, slicer=slicer, should_check_hetero = True)
 
-        shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
-                            self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
+        # shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
+                            # self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
         FIIL(self.directory, self.model, mean_squared_error,
             self.X_test, self.Y_test, self.n_top_features,
             10, self.log, "FIIL")
@@ -249,7 +269,7 @@ def run():
     
     myRegressor.set_input_activation_function('tanh')
     myRegressor.set_hidden_activation_function('relu')
-    myRegressor.set_final_activation_function('sigmoid')
+    myRegressor.set_final_activation_function('linear')
     
     myRegressor.set_optimizer('Adam')
     
