@@ -17,7 +17,7 @@ class KNNR(BaseModel):
 
     def __init__(self, name, dl):
         
-        super().__init__(name, 'KNN')
+        super().__init__(name, 'KNN', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
@@ -33,8 +33,16 @@ class KNNR(BaseModel):
         model = KNeighborsRegressor(n_neighbors = n, n_jobs = -1)
         model.fit(self.X_train, self.Y_train)
 
-        evaluate_regression(self.directory, self.X_train, self.Y_train, model.predict(self.X_train), self.dates_train, 'KNN-OnTrain', self.log, slicer = 1)
-        evaluate_regression(self.directory, self.X_test, self.Y_test, model.predict(self.X_test), self.dates_test, 'KNN-OnTest', self.log, slicer = 1)
+        evaluate_regression(self.directory, self.X_train,
+                            self.Y_train, model.predict(self.X_train),
+                            self.dates_train, 'KNN-OnTrain',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
+        evaluate_regression(self.directory, self.X_test,
+                            self.Y_test, model.predict(self.X_test),
+                            self.dates_test, 'KNN-OnTest',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
 
         joblib.dump(model, self.directory + f"/KNN.pkl")
 

@@ -13,6 +13,7 @@ def report_feature_importance(direc, features_vals, features_names, n_top_featur
     L = len(features_names)
     logger.info(f"Feature importance based on {label}\n" + pprint.pformat(features_.nlargest(max(L, n_top_features))))
 
+    plt.clf()
     ax = features_.nlargest(n_top_features).plot(kind='bar', title = label)
     fig = ax.get_figure()
     fig.savefig(direc + "/"+ f'{label}-FS.png')

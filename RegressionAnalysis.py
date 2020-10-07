@@ -7,7 +7,7 @@ def tree_regressor(name, data_loader):
 	from sklearn.ensemble import ExtraTreesRegressor
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 1000, max_depth = None, min_samples_split=2,
+	tr.set_params(n_estimators = 10, max_depth = 5, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=False)
 
 	# tr.set_trees({'RF':RandomForestRegressor, 'ETC':ExtraTreesRegressor, 'DT':DecisionTreeRegressor})
@@ -50,13 +50,15 @@ def knn_regressor(name, data_loader):
 	# myKNNR.neighbour_analysis(start=3, end=20, step=2)
 
 def dnn_regressor(name, data_loader):
-	from regressors.DNNRegressor import DNNR
 
+	from regressors.DNNRegressor import DNNR
 	myRegressor = DNNR(name, data_loader)
 	
-	myRegressor.set_layers([640, 640, 640])
-	myRegressor.set_loss_function('mean_absolute_percentage_error')
-	myRegressor.set_epochs(300)
+	myRegressor.set_layers([52])
+	# myRegressor.set_loss_function('mean_absolute_percentage_error')
+	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
+	myRegressor.set_loss_function('mse')
+	myRegressor.set_epochs(200)
 	
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -66,28 +68,37 @@ def dnn_regressor(name, data_loader):
 	
 	myRegressor.should_plot_live(True)
 	myRegressor.should_early_stop(False)
+	myRegressor.should_checkpoint(False)
 	
-	myRegressor.set_batch_size(4096)
+	myRegressor.set_batch_size(32)
 	myRegressor.set_patience(500)
 	myRegressor.set_min_delta(2)
 	myRegressor.set_reg(0.000001, 'l2')
 	
 #     myRegressor.runLearningCurve(steps=10)
 #     myRegressor.runRegularizationParameterAnalysis(first_guess = 0.000001, final_value = 0.002, increment=3)
-	myRegressor.fit_model(drop=0, warm_up = False)
-	myRegressor.load_model()
-	myRegressor.get_report(slicer = 1)
+	myRegressor.fit_model(drop=0, warm_up = True)
+	myRegressor.get_report(slicer = 1, of_best = True)
 
 if __name__ == '__main__':
+
+	import os
+	os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 	
-	file_name = 'User_df'
-	dl = DataLoader(file_name, split_size = 0.2, should_shuffle=True,
-								is_imbalanced=False, random_state = 165,
-								k = 5, n_top_features = 20, n_samples = 100000)
+	file_name = 'Hacka2-Scaled'
+	dl = DataLoader(file_name, split_size = 0.2,
+								should_shuffle=True,
+								is_imbalanced=False,
+								random_state = 165,
+								k = 5,
+								n_top_features = 20,
+								n_samples = None,
+								should_log_inverse = False,
+								modelling_type = 'r')
 
 	# linear_regressor(file_name, dl)
-	tree_regressor(file_name, dl)
+	# tree_regressor(file_name, dl)
 	# svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
-	# dnn_regressor(file_name, dl)
+	dnn_regressor(file_name, dl)
 

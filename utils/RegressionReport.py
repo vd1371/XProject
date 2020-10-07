@@ -16,12 +16,24 @@ import shap
 import lime, lime.lime_tabular
 
 
-def evaluate_regression(direc, x_true, y_true, y_pred, inds, label, logger, slicer = 1, should_check_hetero = True):
+def evaluate_regression(direc, x_true,
+								y_true,
+								y_pred,
+								inds,
+								label,
+								logger,
+								slicer = 1,
+								should_check_hetero = True,
+								should_log_inverse = False):
 
 	'''
 	x_true MUST be panda dataframe
 	y_true and y_pred must be list or 1d numpy array
 	'''
+
+	if should_log_inverse:
+		y_true = np.exp(y_true)
+		y_pred = np.exp(y_pred)
 	
 	# Saviong into csv file
 	report = pd.DataFrame()
@@ -93,39 +105,42 @@ def evaluate_regression(direc, x_true, y_true, y_pred, inds, label, logger, slic
 
 			mape_vec = (np.array(y_pred) - np.array(y_true)) / np.array(y_true)
 
-			data = x_true.copy()
-			data['Y'] = y_true
+			plt.scatter(y_true, mape_vec, s = 1)
+			plt.savefig(f"{direc}/{label}-Hetero")
+
+			# data = x_true.copy()
+			# data['Y'] = y_true
 
 
-			file_counter = 0
+			# file_counter = 0
 
-			first = True
-			for i, col in enumerate(data.columns):
+			# first = True
+			# for i, col in enumerate(data.columns):
 
-				# Creating the figs and axes
-				if first:
-					fig, ax = plt.subplots(nrows=3, ncols=3)
-					fig.tight_layout()
-					first = False
+			# 	# Creating the figs and axes
+			# 	if first:
+			# 		fig, ax = plt.subplots(nrows=3, ncols=3)
+			# 		fig.tight_layout()
+			# 		first = False
 
-				counter = i % 9
-				row_idx = int (counter/3)
-				col_idx = counter % 3
+			# 	counter = i % 9
+			# 	row_idx = int (counter/3)
+			# 	col_idx = counter % 3
 
-				ax[row_idx, col_idx].set_title(col)
-				ax[row_idx, col_idx].scatter(data[col], mape_vec, s = 1)
+			# 	ax[row_idx, col_idx].set_title(col)
+			# 	ax[row_idx, col_idx].scatter(data[col], mape_vec, s = 1)
 
-				if (i % 9 == 8) or (i == len(data.columns)-1):
+			# 	if (i % 9 == 8) or (i == len(data.columns)-1):
 					
-					# Unless for the first time, files shoud be saved
-					plt.savefig(f"{direc}/{label}-Hetero-{file_counter}")
-					plt.close()
+			# 		# Unless for the first time, files shoud be saved
+			# 		plt.savefig(f"{direc}/{label}-Hetero-{file_counter}")
+			# 		plt.close()
 
-					file_counter += 1
+			# 		file_counter += 1
 
-					if i != len(data.columns)-1:
-						fig, ax = plt.subplots(nrows=3, ncols=3)
-						fig.tight_layout()
+			# 		if i != len(data.columns)-1:
+			# 			fig, ax = plt.subplots(nrows=3, ncols=3)
+			# 			fig.tight_layout()
 						
 		except ZeroDivisionError:
 			print ("Unable to plot heteroskedasticity graphs. Output variable contains zero")

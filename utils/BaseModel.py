@@ -6,7 +6,7 @@ from utils.AwesomeLogger import Logger
 
 
 class BaseModel(object):
-    def __init__(self, name = None, model_name = 'Unknown'):
+    def __init__(self, name = None, model_name = 'Unknown', data_loader = None):
         super().__init__()
 
         self.name = name        
@@ -17,6 +17,8 @@ class BaseModel(object):
         
         logging_address = os.path.join(self.directory, 'Report.log')
         self.log = Logger(logger_name = self.name + '-Logger', address = logging_address , mode='a')
+
+        self.data_loader = data_loader
 
 
 def MAPE(y_true, y_pred):

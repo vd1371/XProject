@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import joblib
 
@@ -14,7 +15,7 @@ from keras.models import Sequential, load_model
 import keras.losses
 from keras.layers import Dense
 from keras.layers import Dropout
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.regularizers import l1, l2
 from keras.models import model_from_json
 
@@ -27,7 +28,7 @@ class DNNR(BaseModel):
 
     def __init__(self, name, dl):
         
-        super().__init__(name, 'DNN')
+        super().__init__(name, 'DNN', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
@@ -72,6 +73,9 @@ class DNNR(BaseModel):
     
     def should_plot_live(self, val):
         self.should_plot_live_error = val
+
+    def should_checkpoint(self, val):
+        self.should_checkpoint = val
     
     def set_reg(self, reg_param, type='l1'):
         self.l = l1 if type == 'l1' else l2
@@ -80,16 +84,30 @@ class DNNR(BaseModel):
     def set_optimizer(self,val):
         self.optimizer = val
 
-    def _get_call_bakcs(self):
+    def _get_call_backs(self):
         # Creating Early Stopping function and other callbacks
         call_back_list = []
-        early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
+        early_stopping = EarlyStopping(monitor='loss',
+                                        min_delta = self.min_delta,
+                                        patience=self.patience,
+                                        verbose=1,
+                                        mode='auto') 
         plot_losses = PlotLosses()
     
         if self.should_early_stop:
             call_back_list.append(early_stopping)
         if self.should_plot_live_error:
             call_back_list.append(plot_losses)
+        if self.should_checkpoint:
+            checkpoint = ModelCheckpoint(os.path.join(self.directory,
+                                                    f'{self.name}-BestModel.h5'),
+                                                    monitor='val_loss',
+                                                    verbose=1,
+                                                    save_best_only=True,
+                                                    mode='auto')
+            call_back_list.append(checkpoint)
+
+        return call_back_list
 
     def _construct_model(self, reg = None):
 
@@ -97,13 +115,20 @@ class DNNR(BaseModel):
             reg = self.reg_param
 
         model = Sequential()
-        model.add(Dense(self.layers[0], input_dim = self.input_dim, activation = self.input_activation_func, kernel_regularizer=self.l(reg)))
+        model.add(Dense(self.layers[0],
+                        input_dim = self.input_dim,
+                        activation = self.input_activation_func,
+                        kernel_regularizer=self.l(reg)))
         for ind in range(1,len(self.layers)):
-            model.add(Dense(self.layers[ind], activation = self.hidden_activation_func, kernel_regularizer=self.l(reg)))
+            model.add(Dense(self.layers[ind],
+                            activation = self.hidden_activation_func,
+                            kernel_regularizer=self.l(reg)))
         model.add(Dense(1, activation = self.final_activation_func))
          
         # Compile model
-        model.compile(loss=self.loss_func, optimizer=self.optimizer)
+        model.compile(loss=self.loss_func,
+                        optimizer=self.optimizer,
+                        metrics = ['mape'])
 
         return model
     
@@ -127,7 +152,13 @@ class DNNR(BaseModel):
             model, call_back_list = self._construct_model(reg = 0), self._get_call_bakcs()
             
             # Fit the model
-            model.fit(X_train.values, Y_train.values, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
+            model.fit(X_train.values, Y_train.values,
+                        validation_data=(self.X_cv, self.Y_cv),
+                        epochs=self.epochs,
+                        batch_size=self.batch_size,
+                        shuffle=True,
+                        verbose=2,
+                        callbacks=call_back_list)
             plot_losses.closePlot()
             
             print (f"Step {i} of run_learning_curve is done")
@@ -139,7 +170,10 @@ class DNNR(BaseModel):
         train_cv_analyzer_plotter(train_errors, cv_errors, self.directory, 'TrainingCurve', xticks = None)
 
         
-    def run_regularization_parameter_analysis(self, first_guess = 0.001, final_value = 3, increment = 2, should_save_fig = True):
+    def run_regularization_parameter_analysis(self, first_guess = 0.001,
+                                                    final_value = 3,
+                                                    increment = 2,
+                                                    should_save_fig = True):
         
         # Creating empty list for errors
         cv_errors, train_errors, xticks = [], [], []
@@ -171,14 +205,15 @@ class DNNR(BaseModel):
         
         
         
-    def fit_model(self, drop = 0.1, warm_up = False):
+    def fit_model(self, drop = 0.1,
+                        warm_up = False):
 
         constructed = False
         if warm_up:
             try:
-                self.load_model()
+                self.load_model(best = True)
                 constructed = True
-                self.log.info("\n\n------------\nA trained model is loade\n------------\n\n")
+                self.log.info("\n\n------------\nA trained model is loaded\n------------\n\n")
             except OSError:
                 print ("The model is not trained before. No saved models found")
 
@@ -192,7 +227,7 @@ class DNNR(BaseModel):
             short_model_summary = "\n".join(stringlist)
             self.log.info(short_model_summary)
 
-        call_back_list = self._get_call_bakcs()
+        call_back_list = self._get_call_backs()
         
         import time
         start = time.time()
@@ -219,23 +254,25 @@ class DNNR(BaseModel):
         test_scores = self.model.evaluate(self.X_test, self.Y_test, verbose=2)
             
         print ()
-        print (f'Trian_err: {train_scores:.2f}, Cv_err: {cv_scores:.2f}, Test_err: {test_scores:.2f}')
-        self.log.info(f'Trian_err: {train_scores:.2f}, Cv_err: {cv_scores:.2f}, Test_err: {test_scores:2f}')
+        print (f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
+        self.log.info(f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
 
         self.save_model()
         
-    def load_model(self):
+    def load_model(self, best = False):
         
         # load json and create model
-        address = self.directory + "/" +  self.name
-        self.model = load_model(address + "SavedModel.h5")
+        model_type = 'BestModel' if best else 'SavedModel'
+        self.model = load_model(self.directory + "/" +  f"{self.name}-{model_type}.h5")
 
     def save_model(self):
         save_address = self.directory + "/" + self.name 
-        self.model.save(save_address + "SavedModel.h5", save_format = 'h5')
+        self.model.save(save_address + "-SavedModel.h5", save_format = 'h5')
 
         
-    def get_report(self, slicer = 0.5):
+    def get_report(self, slicer = 0.5, of_best = False):
+
+        self.load_model(best = of_best)
         
         y_pred_train = self.model.predict(self.X_train).reshape(1,-1)[0]
         y_pred_cv = self.model.predict(self.X_cv).reshape(1, -1)[0]
@@ -243,19 +280,22 @@ class DNNR(BaseModel):
         
         evaluate_regression(self.directory, self.X_train, self.Y_train,
                             y_pred_train, self.dates_train, 'DNN-OnTrain',
-                            self.log, slicer=slicer, should_check_hetero = False)
+                            self.log, slicer=slicer, should_check_hetero = False,
+                            should_log_inverse = self.data_loader.should_log_inverse)
         evaluate_regression(self.directory, self.X_cv, self.Y_cv,
                             y_pred_cv, self.dates_cv, 'DNN-OnCV',
-                            self.log, slicer=slicer, should_check_hetero = False)
+                            self.log, slicer=slicer, should_check_hetero = False,
+                            should_log_inverse = self.data_loader.should_log_inverse)
         evaluate_regression(self.directory, self.X_test, self.Y_test,
                             y_pred_test, self.dates_test, 'DNN-OnTest',
-                            self.log, slicer=slicer, should_check_hetero = True)
+                            self.log, slicer=slicer, should_check_hetero = True,
+                            should_log_inverse = self.data_loader.should_log_inverse)
 
         # shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
                             # self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
-        FIIL(self.directory, self.model, mean_squared_error,
-            self.X_test, self.Y_test, self.n_top_features,
-            10, self.log, "FIIL")
+        # FIIL(self.directory, self.model, mean_squared_error,
+        #     self.X_test, self.Y_test, self.n_top_features,
+        #     10, self.log, "FIIL")
         
         
 @timeit

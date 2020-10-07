@@ -15,7 +15,7 @@ class Trees(BaseModel):
     
     def __init__(self, name, dl):
         
-        super().__init__(name, 'Trees')
+        super().__init__(name, 'Trees', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
@@ -66,8 +66,16 @@ class Trees(BaseModel):
         
             print (f"Cross validation is done for {model_name}. RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f},  MSE: {-np.mean(scores['test_MSE']):.2f} R2: {-np.mean(scores['test_R2']):.2f}")
         
-        evaluate_regression(self.directory, self.X_train, self.Y_train, model.predict(self.X_train), self.dates_train, model_name+'-OnTrain', self.log, slicer = 1)
-        evaluate_regression(self.directory, self.X_test, self.Y_test, model.predict(self.X_test), self.dates_test, model_name+'-OnTest', self.log, slicer = 1)
+        evaluate_regression(self.directory, self.X_train,
+                            self.Y_train, model.predict(self.X_train),
+                            self.dates_train, model_name+'-OnTrain',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
+        evaluate_regression(self.directory, self.X_test,
+                            self.Y_test, model.predict(self.X_test),
+                            self.dates_test, model_name+'-OnTest',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
 
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
         
