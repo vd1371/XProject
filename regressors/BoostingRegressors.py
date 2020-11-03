@@ -1,39 +1,37 @@
-import os, sys
-parent_dir = os.path.split(os.path.dirname(__file__))[0]
-sys.path.insert(0,parent_dir)
-from Reporter import *
+import os
+import numpy as np
+import joblib
+
+from utils.BaseModel import BaseModel
+from utils.AwesomeTimeIt import timeit
+from utils.RegressionReport import evaluate_regression
+from utils.FeatureImportanceReport import report_feature_importance
 
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
 import xgboost as xgb
-from sklearn.externals import joblib
 
         
-class Boosting(Report):
+class Boosting_XGB(BaseModel):
     
-    def __init__(self, df,
-                        name = None,
-                        split_size = 0.2,
-                        should_shuffle = True,
-                        k = 5,
-                        num_top_features = 10):
+    def __init__(self, name, dl):
                         
+        super().__init__(name, 'XGB', dl)
         
-        super(Boosting, self).__init__(name, 'XGB')
-        
-        self.num_top_features = num_top_features
-        self.k = k
+        self.n_top_features = dl.n_top_features
+        self.k = dl.k
         #splitting data into X and Y
+        self.X_train, self.X_test, self.Y_train, self.Y_test, \
+                self.dates_train, self.dates_test = dl.load_with_test()
+        self.X, self.Y, _ = dl.load_all()
         
-        self.X_train, self.X_test, self.Y_train, self.Y_test, self.dates_train, self.dates_test = prepare_data_simple(df, split_size, should_shuffle= should_shuffle)
-        self.X = pd.concat([self.X_train, self.X_test], axis = 0, join='outer')
-        self.Y = pd.concat([self.Y_train, self.Y_test], axis = 0, join='outer')
         
-        
-    def setParams(self, n_estimators = 2000, learning_rate = 0.05,
-                 max_depth = 5, max_features = 2, min_samples_leaf=4, min_samples_split = 0.6, reg_alpha=0.0004,
-                 should_cross_val=True, n_jobs = 1, verbose = 0):
+    def setParams(self, n_estimators = 2000, learning_rate = 0.05, max_depth = 5,
+                    max_features = 2, min_samples_leaf=4, min_samples_split = 0.6,
+                    reg_alpha=0.0004, should_cross_val=True, n_jobs = 1,
+                    verbose = 0):
+
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.max_depth = max_depth
@@ -68,8 +66,16 @@ class Boosting(Report):
         
         joblib.dump(model, self.directory + f'/{self.name}.pkl', compress=3)
         
-        self.evaluate_regression(self.Y_train, model.predict(self.X_train), self.dates_train, 'XGBR-OnTrain', slicer = 1)
-        self.evaluate_regression(self.Y_test, model.predict(self.X_test), self.dates_test, 'XGBR-OnTest', slicer =1)
+        evaluate_regression(self.directory, self.X_train,
+                            self.Y_train, model.predict(self.X_train),
+                            self.dates_train, 'XGB-OnTrain',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
+        evaluate_regression(self.directory, self.X_test,
+                            self.Y_test, model.predict(self.X_test),
+                            self.dates_test, 'XGB-OnTest',
+                            self.log, slicer = 1,
+                            should_log_inverse = self.data_loader.should_log_inverse)
     
     def tune(self, grid = {'n_estimators': [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)],
                                 'learning_rate': np.linspace(0.01, 0.2, 10),

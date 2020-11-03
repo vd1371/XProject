@@ -211,7 +211,7 @@ class DNNR(BaseModel):
         constructed = False
         if warm_up:
             try:
-                self.load_model(best = True)
+                self.load_model()
                 constructed = True
                 self.log.info("\n\n------------\nA trained model is loaded\n------------\n\n")
             except OSError:
@@ -259,10 +259,10 @@ class DNNR(BaseModel):
 
         self.save_model()
         
-    def load_model(self, best = False):
+    def load_model(self):
         
         # load json and create model
-        model_type = 'BestModel' if best else 'SavedModel'
+        model_type = 'BestModel' if self.should_checkpoint else 'SavedModel'
         self.model = load_model(self.directory + "/" +  f"{self.name}-{model_type}.h5")
 
     def save_model(self):
@@ -270,9 +270,9 @@ class DNNR(BaseModel):
         self.model.save(save_address + "-SavedModel.h5", save_format = 'h5')
 
         
-    def get_report(self, slicer = 0.5, of_best = False):
+    def get_report(self, slicer = 0.5):
 
-        self.load_model(best = of_best)
+        self.load_model()
         
         y_pred_train = self.model.predict(self.X_train).reshape(1,-1)[0]
         y_pred_cv = self.model.predict(self.X_cv).reshape(1, -1)[0]
