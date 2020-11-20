@@ -58,7 +58,7 @@ def dnn_regressor(name, data_loader):
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
 	myRegressor.set_loss_function('mse')
-	myRegressor.set_epochs(200)
+	myRegressor.set_epochs(20)
 	
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -77,8 +77,8 @@ def dnn_regressor(name, data_loader):
 	
 #     myRegressor.runLearningCurve(steps=10)
 #     myRegressor.runRegularizationParameterAnalysis(first_guess = 0.000001, final_value = 0.002, increment=3)
-	myRegressor.fit_model(drop=0, warm_up = True)
-	myRegressor.get_report(slicer = 1, of_best = True)
+	myRegressor.fit_model(drop=0, warm_up = False)
+	myRegressor.get_report(slicer = 1)
 
 if __name__ == '__main__':
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
 	# linear_regressor(file_name, dl)
 	# tree_regressor(file_name, dl)
-	# svm_regressor(file_name, dl)
+	svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
-	dnn_regressor(file_name, dl)
+	# dnn_regressor(file_name, dl)
 

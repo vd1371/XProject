@@ -1,4 +1,4 @@
-import os
+import os, pprint
 import numpy as np
 import joblib
 
@@ -77,8 +77,9 @@ class DNNR(BaseModel):
     def should_checkpoint(self, val):
         self.should_checkpoint = val
     
-    def set_reg(self, reg_param, type='l1'):
-        self.l = l1 if type == 'l1' else l2
+    def set_reg(self, reg_param, regul_type='l1'):
+        self.regul_type = regul_type
+        self.l = l1 if regul_type == 'l1' else l2
         self.reg_param = reg_param
     
     def set_optimizer(self,val):
@@ -109,7 +110,23 @@ class DNNR(BaseModel):
 
         return call_back_list
 
+    def log_hyperparameters(self):
+        self.log.info(pprint.pformat({'layers': self.layers,
+                                    'input_activation_func': self.input_activation_func,
+                                    'hidden_activation_func': self.hidden_activation_func,
+                                    'final_activation_func': self.final_activation_func,
+                                    'loss_func': self.loss_func,
+                                    'epochs': self.epochs,
+                                    'min_delta': self.min_delta,
+                                    'patience': self.patience,
+                                    'batch_size': self.batch_size,
+                                    'should_early_stop': self.should_early_stop,
+                                    'regularization_type': self.regul_type,
+                                    'reg_param': self.reg_param}))
+
     def _construct_model(self, reg = None):
+
+        self.log_hyperparameters()
 
         if reg is None:
             reg = self.reg_param

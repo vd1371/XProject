@@ -1,5 +1,5 @@
 import numpy as np
-import joblib
+import joblib, pprint
 
 from utils.BaseModel import BaseModel
 from utils.AwesomeTimeIt import timeit
@@ -37,6 +37,18 @@ class Trees(BaseModel):
         self.should_cross_val = should_cross_val
         self.n_jobs = n_jobs
         self.verbose = verbose
+
+        self.log.info(pprint.pformat({
+            "n_estimators" : n_estimators,
+            "bootstrap" : bootstrap,
+            "max_depth" : max_depth,
+            "max_features" : max_features,
+            "min_samples_leaf" : min_samples_leaf,
+            "min_samples_split" : min_samples_split,
+            "should_cross_val" : should_cross_val,
+            "n_jobs" : n_jobs,
+            "verbose" : verbose
+            }))
         
     def set_trees(self, trees_dict):
         self.trees = trees_dict
@@ -98,9 +110,22 @@ class Trees(BaseModel):
             self.log.info(f'------ {model_name} is going to be Tunned with \n -----')
             tree = self.trees[model_name]()
             if should_random_search:
-                search_models = RandomizedSearchCV(estimator = tree, param_distributions = grid, n_iter = n_iter, cv = self.k, verbose=2, n_jobs = self.n_jobs)
+                search_models = RandomizedSearchCV(
+                    estimator = tree,
+                    param_distributions = grid,
+                    n_iter = n_iter,
+                    cv = self.k,
+                    verbose=2,
+                    n_jobs = self.n_jobs
+                    )
             else:
-                search_models = GridSearchCV(estimator = tree, param_distributions = grid, cv = self.k, verbose=2, n_jobs = self.n_jobs)
+                search_models = GridSearchCV(
+                    estimator = tree,
+                    param_distributions = grid,
+                    cv = self.k,
+                    verbose=2,
+                    n_jobs = self.n_jobs
+                    )
            
             search_models.fit(self.X, self.Y)
             

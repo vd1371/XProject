@@ -1,5 +1,5 @@
 import numpy as np
-import joblib
+import joblib, pprint
 import matplotlib.pyplot as plt
 
 from utils.BaseModel import BaseModel
@@ -28,6 +28,13 @@ class SVMR(BaseModel):
     
     @timeit
     def fit_model(self, C = 1, kernel = 'rbf', epsilon = 0.3, gamma = 'auto' ):
+
+        self.log.info(pprint.pformat({
+            "C (regularization)": C,
+            "kernel": kernel,
+            "epsilon": epsilon,
+            "gamma": gamma
+            }))
         
         self.model = SVR(C = C, kernel = kernel, epsilon=epsilon, gamma = gamma)
         self.model.fit(self.X_train, self.Y_train)

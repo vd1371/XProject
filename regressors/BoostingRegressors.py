@@ -1,4 +1,4 @@
-import os
+import os, pprint
 import numpy as np
 import joblib
 
@@ -42,6 +42,19 @@ class Boosting_XGB(BaseModel):
         self.n_jobs = n_jobs
         self.verbose = verbose
         self.reg_alpha = reg_alpha
+
+        self.log.info(pprint.pformat({
+            "n_estimators" : n_estimators,
+            "learning_rate" : learning_rate,
+            "max_depth" : max_depth,
+            "max_features" : max_features,
+            "min_samples_leaf" : min_samples_leaf,
+            "min_samples_split" : min_samples_split,
+            "should_cross_val" : should_cross_val,
+            "n_jobs" : n_jobs,
+            "verbose" : verbose,
+            "reg_alpha" : reg_alpha,
+            }))
     
     @timeit
     def xgb_run(self):
@@ -60,7 +73,8 @@ class Boosting_XGB(BaseModel):
         
         if self.should_cross_val:
             scores = cross_val_score(model, self.X, self.Y, cv=self.k, verbose=0)
-            self.log.info(f"---- Cross validation with {self.k} groups----\n\nThe results on each split" + str(scores)+"\n")
+            self.log.info(f"---- Cross validation with {self.k} groups----\n\nThe results on each split" +\
+                                 str(scores)+"\n")
             self.log.info(f"The average of the cross validation is {scores.mean()}\n")
         print (f"Cross validation is done for {self.name}")
         
@@ -91,9 +105,18 @@ class Boosting_XGB(BaseModel):
         self.log.info(f'------ {self.name} is going to be Tunned with \n -----')
         model = xgb.XGBRegressor()
         if should_random_search:
-            search_models = RandomizedSearchCV(estimator = model, param_distributions = grid, n_iter = n_iter, cv = self.k, verbose=2, n_jobs = -1)
+            search_models = RandomizedSearchCV(estimator = model,
+                                                param_distributions = grid,
+                                                n_iter = n_iter,
+                                                cv = self.k,
+                                                verbose=2,
+                                                n_jobs = -1)
         else:
-            search_models = GridSearchCV(estimator = model, param_distributions = grid, cv = self.k, verbose=2, n_jobs = -1)
+            search_models = GridSearchCV(estimator = model,
+                                        param_distributions = grid,
+                                        cv = self.k,
+                                        verbose=2,
+                                        n_jobs = -1)
        
         search_models.fit(self.X, self.Y)
         

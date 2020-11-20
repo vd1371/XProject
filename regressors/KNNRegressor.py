@@ -29,6 +29,10 @@ class KNNR(BaseModel):
     
     @timeit
     def fit_model(self, n = 5 ):
+
+        self.log.info(pprint.pformat({
+            "n_neighbours": n
+            }))
         
         model = KNeighborsRegressor(n_neighbors = n, n_jobs = -1)
         model.fit(self.X_train, self.Y_train)
