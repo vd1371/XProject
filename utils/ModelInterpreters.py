@@ -16,6 +16,7 @@ def shap_deep_regression(direc, model, x_train, x_test, cols, num_top_features =
 	shap_values = explainer.shap_values(x_test.values)
 
 	shap.summary_plot(shap_values[0], features = x_test, feature_names=cols, show=False)
+	plt.tight_layout()
 	plt.savefig(direc + f"/ShapValues-{label}.png")
 	plt.close()
 	
@@ -25,6 +26,8 @@ def shap_deep_regression(direc, model, x_train, x_test, cols, num_top_features =
 	ax = shap_values.nlargest(num_top_features).plot(kind='bar', title = label)
 	fig = ax.get_figure()
 	
+
+	plt.tight_layout()
 	fig.savefig(direc + "/"+ f'ShapValuesBar-{label}.png')
 	del fig
 	plt.close()

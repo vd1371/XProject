@@ -7,7 +7,7 @@ def tree_regressor(name, data_loader):
 	from sklearn.ensemble import ExtraTreesRegressor
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 10, max_depth = 5, min_samples_split=2,
+	tr.set_params(n_estimators = 100, max_depth = 5, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=False)
 
 	# tr.set_trees({'RF':RandomForestRegressor, 'ETC':ExtraTreesRegressor, 'DT':DecisionTreeRegressor})
@@ -29,7 +29,7 @@ def svm_regressor(name, data_loader):
 	
 	mySVM = SVMR(name, data_loader)
 	
-	mySVM.fit_model(C=10000, kernel='rbf', epsilon=0.2, gamma='auto')
+	mySVM.fit_model(C=1000000, kernel='rbf', epsilon=0.2, gamma='auto')
 	# mySVM.regularization_analysis(start = 1, end = 100000, step = 3, kernel = 'rbf')
 	# mySVM.epsilon_analysis(C=50)
 
@@ -46,7 +46,7 @@ def knn_regressor(name, data_loader):
 	from regressors.KNNRegressor import KNNR
 
 	myKNNR = KNNR(name, data_loader)
-	myKNNR.fit_model(n = 25)
+	myKNNR.fit_model(n = 5)
 	# myKNNR.neighbour_analysis(start=3, end=20, step=2)
 
 def dnn_regressor(name, data_loader):
@@ -54,11 +54,11 @@ def dnn_regressor(name, data_loader):
 	from regressors.DNNRegressor import DNNR
 	myRegressor = DNNR(name, data_loader)
 	
-	myRegressor.set_layers([52])
+	myRegressor.set_layers([40, 40, 40])
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
-	myRegressor.set_loss_function('mse')
-	myRegressor.set_epochs(20)
+	myRegressor.set_loss_function('mape')
+	myRegressor.set_epochs(1000)
 	
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -66,7 +66,7 @@ def dnn_regressor(name, data_loader):
 	
 	myRegressor.set_optimizer('Adam')
 	
-	myRegressor.should_plot_live(True)
+	myRegressor.should_plot_live(False)
 	myRegressor.should_early_stop(False)
 	myRegressor.should_checkpoint(False)
 	
@@ -83,6 +83,7 @@ def dnn_regressor(name, data_loader):
 if __name__ == '__main__':
 
 	import os
+	import numpy as np
 	os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 	
 	file_name = 'Hacka2-Scaled'
@@ -91,14 +92,14 @@ if __name__ == '__main__':
 								is_imbalanced=False,
 								random_state = 165,
 								k = 5,
-								n_top_features = 20,
+								n_top_features = 40,
 								n_samples = None,
 								should_log_inverse = False,
 								modelling_type = 'r')
 
 	# linear_regressor(file_name, dl)
 	# tree_regressor(file_name, dl)
-	svm_regressor(file_name, dl)
+	# svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
-	# dnn_regressor(file_name, dl)
+	dnn_regressor(file_name, dl)
 

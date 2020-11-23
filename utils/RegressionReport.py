@@ -44,7 +44,10 @@ def evaluate_regression(direc, x_true,
 	report.set_index('Ind', inplace=True)
 	report.to_csv(direc + "/"+ f'{label}.csv')
 	
-	report_str = f"{label}, CorCoef= {CorCoef(y_true, y_pred):.2f}, R2= {R2(y_true, y_pred):.2f}, RMSE={MSE(y_true, y_pred)**0.5:.2f}, MSE={MSE(y_true, y_pred):.2f}, MAE={MAE(y_true, y_pred):.2f}, MAPE={MAPE(y_true, list(y_pred)):.2f}%"
+	report_str = f"{label}, CorCoef= {CorCoef(y_true, y_pred):.2f}, "\
+					f"R2= {R2(y_true, y_pred):.2f}, RMSE={MSE(y_true, y_pred)**0.5:.2f}, "\
+						f"MSE={MSE(y_true, y_pred):.2f}, MAE={MAE(y_true, y_pred):.2f}, "\
+							f"MAPE={MAPE(y_true, list(y_pred)):.2f}%"
 	
 	logger.info(report_str)
 	print(report_str)
@@ -105,11 +108,12 @@ def evaluate_regression(direc, x_true,
 
 			mape_vec = (np.array(y_pred) - np.array(y_true)) / np.array(y_true)
 
+			plt.clf()
 			plt.scatter(y_true, mape_vec, s = 1)
 			plt.savefig(f"{direc}/{label}-Hetero")
 
-			# data = x_true.copy()
-			# data['Y'] = y_true
+			data = x_true.copy()
+			data['Y'] = y_true
 
 
 			# file_counter = 0

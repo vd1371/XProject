@@ -37,7 +37,9 @@ class Linear(BaseModel):
         self.log.info(str(est.summary()))
 
     @timeit
-    def fit(self, model_name, alpha = 0.002, fit_intercept = True, should_analyze = False, start = 0.000001, end=2, step=2):
+    def fit(self, model_name, alpha = 0.002,
+            fit_intercept = True, should_analyze = False,
+            start = 0.000001, end=2, step=2):
 
         if should_analyze and (model_name.lower() == 'lasso' or model_name.lower() == 'ridge'):
             
@@ -58,7 +60,8 @@ class Linear(BaseModel):
             
                 i = i *step
         
-            train_cv_analyzer_plotter(train_error_list, cv_error_list, self.directory, 'Lasso_Regularization_Analysis', xticks = xticks)
+            train_cv_analyzer_plotter(train_error_list, cv_error_list, self.directory,
+                                        'Lasso_Regularization_Analysis', xticks = xticks)
         
         else:
 

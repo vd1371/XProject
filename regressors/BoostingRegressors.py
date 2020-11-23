@@ -54,6 +54,7 @@ class Boosting_XGB(BaseModel):
             "n_jobs" : n_jobs,
             "verbose" : verbose,
             "reg_alpha" : reg_alpha,
+            'random_state': self.dl.random_state
             }))
     
     @timeit

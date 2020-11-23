@@ -31,7 +31,8 @@ class KNNR(BaseModel):
     def fit_model(self, n = 5 ):
 
         self.log.info(pprint.pformat({
-            "n_neighbours": n
+            "n_neighbours": n,
+            'random_state': self.dl.random_state
             }))
         
         model = KNeighborsRegressor(n_neighbors = n, n_jobs = -1)

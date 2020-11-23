@@ -20,9 +20,8 @@ class SVMR(BaseModel):
         self.n_top_features = dl.n_top_features
         self.k = dl.k
         
-        self.X_train, self.X_cv, self.X_test, \
-            self.Y_train, self.Y_cv, self.Y_test, \
-            self.dates_train, self.dates_cv, self.dates_test = dl.load_with_csv()
+        self.X_train, self.X_test, self.Y_train, self.Y_test, \
+                self.dates_train, self.dates_test = dl.load_with_test()
         
         self.X, self.Y, _ = dl.load_all()
     
@@ -33,7 +32,8 @@ class SVMR(BaseModel):
             "C (regularization)": C,
             "kernel": kernel,
             "epsilon": epsilon,
-            "gamma": gamma
+            "gamma": gamma,
+            'random_state': self.dl.random_state
             }))
         
         self.model = SVR(C = C, kernel = kernel, epsilon=epsilon, gamma = gamma)
@@ -70,7 +70,7 @@ class SVMR(BaseModel):
             model.fit(self.X_train, self.Y_train)
             
             train_error.append(mean_squared_error(self.Y_train, model.predict(self.X_train)))
-            cv_error.append(mean_squared_error(self.Y_cv, model.predict(self.X_cv)))
+            cv_error.append(mean_squared_error(self.Y_test, model.predict(self.X_test)))
             
             print (f"Step {i} of SVM regularization is done")
         
@@ -92,7 +92,7 @@ class SVMR(BaseModel):
             model.fit(self.X_train, self.Y_train)
             
             train_error.append(mean_squared_error(self.Y_train, model.predict(self.X_train)))
-            cv_error.append(mean_squared_error(self.Y_cv, model.predict(self.X_cv)))
+            cv_error.append(mean_squared_error(self.Y_test, model.predict(self.X_test)))
             
             print (f"Step {i} of SVM epsilon_analysis is done")
         

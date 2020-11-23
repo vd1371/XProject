@@ -122,7 +122,8 @@ class DNNR(BaseModel):
                                     'batch_size': self.batch_size,
                                     'should_early_stop': self.should_early_stop,
                                     'regularization_type': self.regul_type,
-                                    'reg_param': self.reg_param}))
+                                    'reg_param': self.reg_param,
+                                    'random_state': self.dl.random_state}))
 
     def _construct_model(self, reg = None):
 
@@ -308,11 +309,20 @@ class DNNR(BaseModel):
                             self.log, slicer=slicer, should_check_hetero = True,
                             should_log_inverse = self.data_loader.should_log_inverse)
 
-        # shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
-                            # self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
-        # FIIL(self.directory, self.model, mean_squared_error,
-        #     self.X_test, self.Y_test, self.n_top_features,
-        #     10, self.log, "FIIL")
+        _, self.X_test_report, _, self.Y_test_report, \
+                _, self.dates_test_report = self.dl.load_with_test()
+
+        y_pred_test_report = self.model.predict(self.X_test_report).reshape(1,-1)[0]
+        evaluate_regression(self.directory, self.X_test_report, self.Y_test_report,
+                            y_pred_test_report, self.dates_test_report, 'DNN-ReportOnTest',
+                            self.log, slicer=slicer, should_check_hetero = True,
+                            should_log_inverse = self.data_loader.should_log_inverse)
+
+        shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
+                            self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
+        FIIL(self.directory, self.model, mean_squared_error,
+            self.X_test, self.Y_test, self.n_top_features,
+            10, self.log, "FIIL")
         
         
 @timeit

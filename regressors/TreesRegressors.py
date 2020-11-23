@@ -47,7 +47,8 @@ class Trees(BaseModel):
             "min_samples_split" : min_samples_split,
             "should_cross_val" : should_cross_val,
             "n_jobs" : n_jobs,
-            "verbose" : verbose
+            "verbose" : verbose,
+            'random_state': self.dl.random_state
             }))
         
     def set_trees(self, trees_dict):

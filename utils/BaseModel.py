@@ -9,7 +9,8 @@ class BaseModel(object):
     def __init__(self, name = None, model_name = 'Unknown', data_loader = None):
         super().__init__()
 
-        self.name = name        
+        self.name = name
+        self.dl = data_loader
         self.directory = os.path.join("./XReport", self.name, model_name)
         
         if not os.path.exists(self.directory):
