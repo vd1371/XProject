@@ -15,6 +15,8 @@ class DataLoader():
                         should_log_inverse = False,
                         modelling_type = 'regression'):
 
+        print ("About to load the data...")
+
         self.split_size = split_size
         self.random_state = random_state
         self.should_shuffle = should_shuffle
@@ -93,18 +95,22 @@ class DataLoader():
             dates_train = ['SMOTE'+str(i) for i in range(len(X_train))]
         
         elif self.modelling_type.lower() == 'r':
-            import smogn
+            import PyImbalReg as pir
 
             df = x_train.copy()
             df['Y'] = y_train
-            df.reset_index(drop = True, inplace = True)
-            df_smogn = smogn.smoter(data = df, y = 'Y')
+            df = pir.GNHF(df = df,
+                            perm_amp = 0.01,
+                            bins = 50,
+                            should_log_transform = True,
+                            random_state = self.random_state).get()
 
-            X_train, Y_train, dates_train = df_smogn.iloc[:, :-1], df_smogn.iloc[:, -1], df_smogn.index
+            X_train, Y_train, dates_train = df.iloc[:, :-1], df.iloc[:, -1], df.index
 
         else:
             raise ValueError ("The modelling_type should be 'r' or 'c' ")
 
+        print ("Data is resampled now")
         return X_train, Y_train, dates_train
                 
                 

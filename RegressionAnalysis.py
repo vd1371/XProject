@@ -54,12 +54,12 @@ def dnn_regressor(name, data_loader):
 	from regressors.DNNRegressor import DNNR
 	myRegressor = DNNR(name, data_loader)
 	
-	myRegressor.set_layers([40, 40, 40])
+	myRegressor.set_layers([500, 500, 500])
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
-	myRegressor.set_loss_function('mape')
-	myRegressor.set_epochs(1000)
-	
+	myRegressor.set_loss_function('mae')
+	myRegressor.set_epochs(500)
+
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
 	myRegressor.set_final_activation_function('linear')
@@ -68,9 +68,9 @@ def dnn_regressor(name, data_loader):
 	
 	myRegressor.should_plot_live(False)
 	myRegressor.should_early_stop(False)
-	myRegressor.should_checkpoint(False)
+	myRegressor.should_checkpoint(True)
 	
-	myRegressor.set_batch_size(32)
+	myRegressor.set_batch_size(4096)
 	myRegressor.set_patience(500)
 	myRegressor.set_min_delta(2)
 	myRegressor.set_reg(0.000001, 'l2')
@@ -78,16 +78,16 @@ def dnn_regressor(name, data_loader):
 #     myRegressor.runLearningCurve(steps=10)
 #     myRegressor.runRegularizationParameterAnalysis(first_guess = 0.000001, final_value = 0.002, increment=3)
 	myRegressor.fit_model(drop=0, warm_up = False)
-	myRegressor.get_report(slicer = 1)
+	myRegressor.get_report(slicer = 1, interpret = False)
 
 if __name__ == '__main__':
 
 	import os
 	import numpy as np
-	os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 	
-	file_name = 'Hacka2-Scaled'
-	dl = DataLoader(file_name, split_size = 0.2,
+	file_name = 'User_df'
+	dl = DataLoader(file_name, split_size = 0.1,
 								should_shuffle=True,
 								is_imbalanced=False,
 								random_state = 165,

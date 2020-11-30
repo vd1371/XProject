@@ -33,44 +33,44 @@ from builtins import isinstance
 import lime
 import lime.lime_tabular
 
-    def evaluate_classification(self, y_true, y_pred, inds, label, extra_df = None):
+def evaluate_classification(self, y_true, y_pred, inds, label, extra_df = None):
+
+    self.log.info(f"----------Classification Report for {label}------------\n" + str(classification_report(y_true, y_pred))+"\n")
+    self.log.info(f"----------Confusion Matrix for {label}------------\n" + str(confusion_matrix(y_true, y_pred))+"\n")
+    self.log.info(f'----------Accurcay for {label}------------\n'+str(round(accuracy_score(y_true, y_pred),4)))
     
-        self.log.info(f"----------Classification Report for {label}------------\n" + str(classification_report(y_true, y_pred))+"\n")
-        self.log.info(f"----------Confusion Matrix for {label}------------\n" + str(confusion_matrix(y_true, y_pred))+"\n")
-        self.log.info(f'----------Accurcay for {label}------------\n'+str(round(accuracy_score(y_true, y_pred),4)))
-        
-        print (classification_report(y_true, y_pred))
-        print (f'Accuracy score for {label}', round(accuracy_score(y_true, y_pred),4))
-        print ("------------------------------------------------")
-        
-        
-        report = pd.DataFrame()
-        report['Actual'] = y_true
-        report['Predicted'] = y_pred
-        report['Ind'] = inds
-        report.set_index('Ind', inplace=True)
-        report.to_csv(self.directory + "/" + f'{label}.csv')
-        
-        if isinstance(extra_df, pd.DataFrame):
-            df = pd.concat([report, extra_df], axis = 1, join = 'inner')
-            df.to_csv(self.directory + "/" + f'{label}-ExtraInformation.csv')
+    print (classification_report(y_true, y_pred))
+    print (f'Accuracy score for {label}', round(accuracy_score(y_true, y_pred),4))
+    print ("------------------------------------------------")
     
-        
-    def shap_deep_classification(self, model, x_train, x_test, cols, num_top_features = 10, label = 'DNN-OnTest'):
     
-        explainer = shap.DeepExplainer(model, x_train.values)
-        shap_values = explainer.shap_values(x_test)
+    report = pd.DataFrame()
+    report['Actual'] = y_true
+    report['Predicted'] = y_pred
+    report['Ind'] = inds
+    report.set_index('Ind', inplace=True)
+    report.to_csv(self.directory + "/" + f'{label}.csv')
     
-        shap.summary_plot(shap_values[0], features = x_test, feature_names=cols, show=False)
-        plt.savefig(self.directory + f"/ShapValues-{label}.png")
-        plt.close()
-        
-        shap_values = pd.DataFrame(shap_values[0], columns = list(x_train.columns)).abs().mean(axis = 0)
-        self.log.info(f"SHAP Values {label}\n" + pprint.pformat(shap_values.nlargest(num_top_features)))
-        
-        ax = shap_values.nlargest(num_top_features).plot(kind='bar', title = label)
-        fig = ax.get_figure()
-        
-        fig.savefig(self.directory + "/"+ f'ShapValuesBar-{label}.png')
-        del fig
-        plt.close()
+    if isinstance(extra_df, pd.DataFrame):
+        df = pd.concat([report, extra_df], axis = 1, join = 'inner')
+        df.to_csv(self.directory + "/" + f'{label}-ExtraInformation.csv')
+
+    
+def shap_deep_classification(self, model, x_train, x_test, cols, num_top_features = 10, label = 'DNN-OnTest'):
+
+    explainer = shap.DeepExplainer(model, x_train.values)
+    shap_values = explainer.shap_values(x_test)
+
+    shap.summary_plot(shap_values[0], features = x_test, feature_names=cols, show=False)
+    plt.savefig(self.directory + f"/ShapValues-{label}.png")
+    plt.close()
+    
+    shap_values = pd.DataFrame(shap_values[0], columns = list(x_train.columns)).abs().mean(axis = 0)
+    self.log.info(f"SHAP Values {label}\n" + pprint.pformat(shap_values.nlargest(num_top_features)))
+    
+    ax = shap_values.nlargest(num_top_features).plot(kind='bar', title = label)
+    fig = ax.get_figure()
+    
+    fig.savefig(self.directory + "/"+ f'ShapValuesBar-{label}.png')
+    del fig
+    plt.close()

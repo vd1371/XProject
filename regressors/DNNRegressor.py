@@ -1,5 +1,6 @@
 import os, pprint
 import numpy as np
+import pandas as pd
 import joblib
 
 from utils.BaseModel import BaseModel
@@ -250,11 +251,16 @@ class DNNR(BaseModel):
         import time
         start = time.time()
         # Fit the model
-        self.model.fit(self.X_train.values, self.Y_train.values,
+        hist = self.model.fit(self.X_train.values, self.Y_train.values,
                             validation_data=(self.X_cv, self.Y_cv),
                             epochs=self.epochs,
                             batch_size=self.batch_size,
                             verbose = 2, shuffle=True, callbacks=call_back_list)
+
+        # Logging call_back history
+        hist_df = pd.DataFrame.from_dict(hist.history)
+        hist_df.to_csv(f"{self.directory}/{self.loss_func}-hist.csv")
+
 
         print (f"********* {time.time()-start:.4f} ***********")
 
@@ -288,7 +294,7 @@ class DNNR(BaseModel):
         self.model.save(save_address + "-SavedModel.h5", save_format = 'h5')
 
         
-    def get_report(self, slicer = 0.5):
+    def get_report(self, slicer = 0.5, interpret = False):
 
         self.load_model()
         
@@ -318,11 +324,13 @@ class DNNR(BaseModel):
                             self.log, slicer=slicer, should_check_hetero = True,
                             should_log_inverse = self.data_loader.should_log_inverse)
 
-        shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
-                            self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
-        FIIL(self.directory, self.model, mean_squared_error,
-            self.X_test, self.Y_test, self.n_top_features,
-            10, self.log, "FIIL")
+        if interpret:
+
+            shap_deep_regression(self.directory, self.model, self.X_train, self.X_test,
+                                self.X_train.columns, self.n_top_features, self.log, label = 'DNN-OnTest')
+            FIIL(self.directory, self.model, mean_squared_error,
+                self.X_test, self.Y_test, self.n_top_features,
+                10, self.log, "FIIL")
         
         
 @timeit
