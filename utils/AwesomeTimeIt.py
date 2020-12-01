@@ -7,10 +7,13 @@ def timeit(method):
         print (f'---- {method.__name__} is about to start ----')
         result = method(*args, **kw)
         te = time.time()
-        if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
-            kw['log_time'][name] = int((te - ts) * 1000)
-        else:
-            print (f'---- {method.__name__} is done in {te-ts:.2f} seconds ----')
+        elapsed_time = ts - te
+        try:
+            # args[0] is supposed to be self
+            args[0].log.info(f'---- {method.__name__} is done in {te-ts:.2f} seconds ----')
+        except:
+            pass
+        print (f'---- {method.__name__} is done in {te-ts:.2f} seconds ----')
+
         return result
     return timed

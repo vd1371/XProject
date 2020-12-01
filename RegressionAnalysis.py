@@ -7,11 +7,11 @@ def tree_regressor(name, data_loader):
 	from sklearn.ensemble import ExtraTreesRegressor
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 100, max_depth = 5, min_samples_split=2,
+	tr.set_params(n_estimators = 500, max_depth = 5, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=False)
 
 	# tr.set_trees({'RF':RandomForestRegressor, 'ETC':ExtraTreesRegressor, 'DT':DecisionTreeRegressor})
-	tr.set_trees({'RF':RandomForestRegressor})
+	tr.set_trees({'RF':RandomForestRegressor, 'DT':DecisionTreeRegressor})
 	# tr.set_trees({'DT':DecisionTreeRegressor})
 
 	# tr.tune_rees(grid = {'n_estimators': [int(x) for x in np.linspace(start = 10, stop = 1000, num = 10)],
@@ -46,7 +46,7 @@ def knn_regressor(name, data_loader):
 	from regressors.KNNRegressor import KNNR
 
 	myKNNR = KNNR(name, data_loader)
-	myKNNR.fit_model(n = 5)
+	myKNNR.fit_model(n = 15)
 	# myKNNR.neighbour_analysis(start=3, end=20, step=2)
 
 def dnn_regressor(name, data_loader):
@@ -57,8 +57,8 @@ def dnn_regressor(name, data_loader):
 	myRegressor.set_layers([500, 500, 500])
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
-	myRegressor.set_loss_function('mae')
-	myRegressor.set_epochs(500)
+	myRegressor.set_loss_function('mape')
+	myRegressor.set_epochs(10)
 
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -77,7 +77,7 @@ def dnn_regressor(name, data_loader):
 	
 #     myRegressor.runLearningCurve(steps=10)
 #     myRegressor.runRegularizationParameterAnalysis(first_guess = 0.000001, final_value = 0.002, increment=3)
-	myRegressor.fit_model(drop=0, warm_up = False)
+	myRegressor.fit_model(drop=0, warm_up = True)
 	myRegressor.get_report(slicer = 1, interpret = False)
 
 if __name__ == '__main__':
@@ -85,8 +85,8 @@ if __name__ == '__main__':
 	import os
 	import numpy as np
 	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-	
-	file_name = 'User_df'
+
+	file_name = 'Agency_df'
 	dl = DataLoader(file_name, split_size = 0.1,
 								should_shuffle=True,
 								is_imbalanced=False,
@@ -97,9 +97,9 @@ if __name__ == '__main__':
 								should_log_inverse = False,
 								modelling_type = 'r')
 
-	# linear_regressor(file_name, dl)
+	linear_regressor(file_name, dl)
 	# tree_regressor(file_name, dl)
 	# svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
-	dnn_regressor(file_name, dl)
+	# dnn_regressor(file_name, dl)
 

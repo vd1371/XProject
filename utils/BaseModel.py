@@ -17,7 +17,7 @@ class BaseModel(object):
             os.makedirs(self.directory)
         
         logging_address = os.path.join(self.directory, 'Report.log')
-        self.log = Logger(logger_name = self.name + '-Logger', address = logging_address , mode='a')
+        self.log = Logger(logger_name = f'{self.name}-{model_name}-Logger', address = logging_address , mode='a')
 
         self.data_loader = data_loader
 
