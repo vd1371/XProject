@@ -7,11 +7,11 @@ def tree_regressor(name, data_loader):
 	from sklearn.ensemble import ExtraTreesRegressor
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 500, max_depth = 5, min_samples_split=2,
+	tr.set_params(n_estimators = 500, max_depth = None, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=False)
 
 	# tr.set_trees({'RF':RandomForestRegressor, 'ETC':ExtraTreesRegressor, 'DT':DecisionTreeRegressor})
-	tr.set_trees({'RF':RandomForestRegressor, 'DT':DecisionTreeRegressor})
+	tr.set_trees({'RF':RandomForestRegressor})
 	# tr.set_trees({'DT':DecisionTreeRegressor})
 
 	# tr.tune_rees(grid = {'n_estimators': [int(x) for x in np.linspace(start = 10, stop = 1000, num = 10)],
@@ -52,13 +52,13 @@ def knn_regressor(name, data_loader):
 def dnn_regressor(name, data_loader):
 
 	from regressors.DNNRegressor import DNNR
-	myRegressor = DNNR(name, data_loader)
+	myRegressor = DNNR(name, 'ANN', data_loader)
 	
-	myRegressor.set_layers([500, 500, 500])
+	myRegressor.set_layers([500])
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
 	myRegressor.set_loss_function('mape')
-	myRegressor.set_epochs(10)
+	myRegressor.set_epochs(1200)
 
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -68,7 +68,7 @@ def dnn_regressor(name, data_loader):
 	
 	myRegressor.should_plot_live(False)
 	myRegressor.should_early_stop(False)
-	myRegressor.should_checkpoint(True)
+	myRegressor.should_checkpoint(False)
 	
 	myRegressor.set_batch_size(4096)
 	myRegressor.set_patience(500)
@@ -86,19 +86,19 @@ if __name__ == '__main__':
 	import numpy as np
 	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'Agency_df'
+	file_name = 'User_df'
 	dl = DataLoader(file_name, split_size = 0.1,
 								should_shuffle=True,
 								is_imbalanced=False,
 								random_state = 165,
 								k = 5,
-								n_top_features = 40,
+								n_top_features = 20,
 								n_samples = None,
 								should_log_inverse = False,
 								modelling_type = 'r')
 
-	linear_regressor(file_name, dl)
-	# tree_regressor(file_name, dl)
+	# linear_regressor(file_name, dl)
+	tree_regressor(file_name, dl)
 	# svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
 	# dnn_regressor(file_name, dl)

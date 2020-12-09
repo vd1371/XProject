@@ -27,9 +27,9 @@ import matplotlib.pyplot as plt
         
 class DNNR(BaseModel):
 
-    def __init__(self, name, dl):
+    def __init__(self, name, model_name, dl):
         
-        super().__init__(name, 'DNN', dl)
+        super().__init__(name, model_name, dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
@@ -303,15 +303,15 @@ class DNNR(BaseModel):
         y_pred_test = self.model.predict(self.X_test).reshape(1,-1)[0]
         
         evaluate_regression(self.directory, self.X_train, self.Y_train,
-                            y_pred_train, self.dates_train, 'DNN-OnTrain',
+                            y_pred_train, self.dates_train, f'{self.model_name}-OnTrain',
                             self.log, slicer=slicer, should_check_hetero = False,
                             should_log_inverse = self.data_loader.should_log_inverse)
         evaluate_regression(self.directory, self.X_cv, self.Y_cv,
-                            y_pred_cv, self.dates_cv, 'DNN-OnCV',
+                            y_pred_cv, self.dates_cv, f'{self.model_name}-OnCV',
                             self.log, slicer=slicer, should_check_hetero = False,
                             should_log_inverse = self.data_loader.should_log_inverse)
         evaluate_regression(self.directory, self.X_test, self.Y_test,
-                            y_pred_test, self.dates_test, 'DNN-OnTest',
+                            y_pred_test, self.dates_test, f'{self.model_name}-OnTest',
                             self.log, slicer=slicer, should_check_hetero = True,
                             should_log_inverse = self.data_loader.should_log_inverse)
 
@@ -320,7 +320,7 @@ class DNNR(BaseModel):
 
         y_pred_test_report = self.model.predict(self.X_test_report).reshape(1,-1)[0]
         evaluate_regression(self.directory, self.X_test_report, self.Y_test_report,
-                            y_pred_test_report, self.dates_test_report, 'DNN-ReportOnTest',
+                            y_pred_test_report, self.dates_test_report, f'{self.model_name}-ReportOnTest',
                             self.log, slicer=slicer, should_check_hetero = True,
                             should_log_inverse = self.data_loader.should_log_inverse)
 
