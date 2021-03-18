@@ -1,68 +1,94 @@
 import numpy as np
-import joblib, pprint
+import joblib
+import pprint
 
-from utils.BaseModel import BaseModel
+from utils.BaseModel import BaseModel, R2
 from utils.AwesomeTimeIt import timeit
 from utils.RegressionReport import evaluate_regression
 from utils.FeatureImportanceReport import report_feature_importance
 
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import cross_validate
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import ExtraTreesRegressor
 
 class Trees(BaseModel):
     
     def __init__(self, name, dl):
         
-        super().__init__(name, 'Trees', dl)
-        
         self.n_top_features = dl.n_top_features
         self.k = dl.k
+        self.dl = dl
+        self.name = name
+
+    def initialize(self, model_name):
+        super().__init__(self.name, model_name, self.dl)
+
+    def load(self):
         
         self.X_train, self.X_test, self.Y_train, self.Y_test, \
-                self.dates_train, self.dates_test = dl.load_with_test()
+                self.dates_train, self.dates_test = self.dl.load_with_test()
         
-        self.X, self.Y, _ = dl.load_all()
+        self.X, self.Y, _ = self.dl.load_all()
+
+    def set_params(self, **params):
         
-    def set_params(self, n_estimators=500, max_depth=None, min_samples_split=2, min_samples_leaf=1, 
-                  max_features='auto', bootstrap=True, n_jobs=-1,  verbose=1, should_cross_val = True):
-    
-        self.n_estimators = n_estimators
-        self.bootstrap = bootstrap
-        self.max_depth = max_depth
-        self.max_features = max_features
-        self.min_samples_leaf = min_samples_leaf
-        self.min_samples_split = min_samples_split
-        self.should_cross_val = should_cross_val
-        self.n_jobs = n_jobs
-        self.verbose = verbose
+        self.n_estimators = params.pop('n_estimators', 100) 
+        self.bootstrap = params.pop('bootstrap', 5)
+        self.max_depth = params.pop('max_depth', 5)
+        self.max_features = params.pop('max_features', 2)
+        self.min_samples_leaf = params.pop('min_samples_leaf', 4)
+        self.min_samples_split = params.pop('min_samples_split', 0.6)
+        self.should_cross_val = params.pop('should_cross_val', True)
+        self.n_jobs = params.pop('n_jobs', 1)
+        self.verbose = params.pop('verbose', 1)
+
+    def log_params(self):
 
         self.log.info(pprint.pformat({
-            "n_estimators" : n_estimators,
-            "bootstrap" : bootstrap,
-            "max_depth" : max_depth,
-            "max_features" : max_features,
-            "min_samples_leaf" : min_samples_leaf,
-            "min_samples_split" : min_samples_split,
-            "should_cross_val" : should_cross_val,
-            "n_jobs" : n_jobs,
-            "verbose" : verbose,
+            "Model_type": self.model_name,
+            "n_estimators" : self.n_estimators,
+            "bootstrap" : self.bootstrap,
+            "max_depth" : self.max_depth,
+            "max_features" : self.max_features,
+            "min_samples_leaf" : self.min_samples_leaf,
+            "min_samples_split" : self.min_samples_split,
+            "should_cross_val" : self.should_cross_val,
+            "n_jobs" : self.n_jobs,
+            "verbose" : self.verbose,
             'random_state': self.dl.random_state
             }))
         
-    def set_trees(self, trees_dict):
-        self.trees = trees_dict
+    @timeit
+    def fit_random_forest(self):
+        self.fit(RandomForestRegressor, 'RF')
+
+    @timeit
+    def fit_decision_tree(self):
+        self.fit(DecisionTreeRegressor, 'DT')
+    
+    @timeit
+    def fit_extra_trees(self):
+        self.fit(ExtraTreesRegressor, 'ET')
+    
     
     @timeit
     def fit(self, tree, model_name):
+
+        self.initialize(model_name)
+        self.load()
+        self.log_params()
         
-        self.log.info(f'---{model_name} with {self.n_estimators} estimators is about to fit')
         if model_name != 'DT':
             model = tree(n_estimators=self.n_estimators, max_depth=self.max_depth,
                         min_samples_split=self.min_samples_split, min_samples_leaf=self.min_samples_leaf,
                         max_features=self.max_features, bootstrap=self.bootstrap,
-                        n_jobs=self.n_jobs,  verbose=self.verbose)
+                        n_jobs=self.n_jobs,  verbose=self.verbose, random_state = self.dl.random_state)
         else:
             model = tree( max_depth=self.max_depth, min_samples_split=self.min_samples_split,
                         min_samples_leaf=self.min_samples_leaf, max_features=self.max_features)
@@ -75,20 +101,23 @@ class Trees(BaseModel):
             mse_scorer = make_scorer(mean_squared_error, greater_is_better=False)
             
             scores = cross_validate(model, self.X, self.Y, cv=self.k, verbose=0, scoring= {'MSE': mse_scorer, 'R2' : r2_scorer})
-            self.log.info( f"Cross validation is done for {model_name}. RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f}, MSE: {-np.mean(scores['test_MSE']):.2f} R2: {-np.mean(scores['test_R2']):.2f}")
+            self.log.info( f"Cross validation is done for {model_name}. RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f}, "
+                                "MSE: {-np.mean(scores['test_MSE']):.2f} R2: {-np.mean(scores['test_R2']):.2f}")
         
-            print (f"Cross validation is done for {model_name}. RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f},  MSE: {-np.mean(scores['test_MSE']):.2f} R2: {-np.mean(scores['test_R2']):.2f}")
-        
-        evaluate_regression(self.directory, self.X_train,
-                            self.Y_train, model.predict(self.X_train),
-                            self.dates_train, model_name+'-OnTrain',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
-        evaluate_regression(self.directory, self.X_test,
-                            self.Y_test, model.predict(self.X_test),
-                            self.dates_test, model_name+'-OnTest',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
+            print (f"|- Cross validation is done for {model_name} "\
+                            f"RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f},"\
+                                f"MSE: {-np.mean(scores['test_MSE']):.2f}, "
+                                    f"R2: {-np.mean(scores['test_R2']):.2f}-|")
+
+        evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                                ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                                direc = self.directory,
+                                model = model,
+                                model_name = model_name,
+                                logger = self.log,
+                                slicer = 1,
+                                should_check_hetero = True,
+                                should_log_inverse = False)
 
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
         
@@ -133,10 +162,3 @@ class Trees(BaseModel):
             self.log.info(f"\n\nBest params:\n{pprint.pformat(search_models.best_params_)}\n")
             self.log.info(f"\n\nBest score: {search_models.best_score_:0.4f}\n\n")
             print (search_models.best_score_)
-            
-    def fit_all(self):
-        
-        for model_name in self.trees:
-            print (f"{model_name} is about to start")
-            tree = self.trees[model_name]
-            self.fit(tree, model_name)

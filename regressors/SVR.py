@@ -8,51 +8,66 @@ from utils.AwesomeTimeIt import timeit
 from utils.RegressionReport import evaluate_regression
 from utils.FeatureImportanceReport import report_feature_importance
 
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics import mean_squared_error
 from sklearn.svm import SVR
 
 class SVMR(BaseModel):
 
     def __init__(self, name, dl):
         
-        super().__init__(name, 'SVM', dl)
+        super().__init__(name, 'SVR', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
+        self.dl = dl
         
         self.X_train, self.X_test, self.Y_train, self.Y_test, \
                 self.dates_train, self.dates_test = dl.load_with_test()
         
         self.X, self.Y, _ = dl.load_all()
-    
-    @timeit
-    def fit_model(self, C = 1, kernel = 'rbf', epsilon = 0.3, gamma = 'auto' ):
+
+    def set_params(self, **params):
+        
+        self.kernel = params.pop('kernel', 'linear') 
+        self.gamma = params.pop('gamma', 'auto')
+        self.epsilon = params.pop('epsilon', 0.1)
+        self.C = params.pop('C', 1)
+
+    def log_params(self):
 
         self.log.info(pprint.pformat({
-            "C (regularization)": C,
-            "kernel": kernel,
-            "epsilon": epsilon,
-            "gamma": gamma,
+            "Model_type": 'SVC',
+            'kernel': self.kernel,
+            'gamma': self.gamma,
+            'C': self.C,
             'random_state': self.dl.random_state
             }))
+    
+    @timeit
+    def fit_model(self):
+
+        self.set_params()
+        self.log_params()
         
-        self.model = SVR(C = C, kernel = kernel, epsilon=epsilon, gamma = gamma)
+        self.model = SVR(C = self.C,
+                        kernel = self.kernel,
+                        epsilon = self.epsilon,
+                        gamma = self.gamma)
         self.model.fit(self.X_train, self.Y_train)
         
-        if kernel == 'linear':
+        if self.kernel == 'linear':
             report_feature_importance(self.directory, self.model.coef_[0], self.X_train.columns,
                                     self.n_top_features, 'SVR', self.log)
 
-        evaluate_regression(self.directory, self.X_train,
-                            self.Y_train, self.model.predict(self.X_train),
-                            self.dates_train, 'SVR-OnTrain',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
-        evaluate_regression(self.directory, self.X_test,
-                            self.Y_test, self.model.predict(self.X_test),
-                            self.dates_test, 'SVR-OnTest',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
+        evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                                ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                                direc = self.directory,
+                                model = self.model,
+                                model_name = self.model_name,
+                                logger = self.log,
+                                slicer = 1,
+                                should_check_hetero = True,
+                                should_log_inverse = self.dl.should_log_inverse)
 
         joblib.dump(self.model, self.directory + f"/SVR.pkl")
     

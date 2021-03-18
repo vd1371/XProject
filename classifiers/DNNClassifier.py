@@ -1,126 +1,165 @@
-import os, sys
-parent_dir = os.path.split(os.path.dirname(__file__))[0]
-sys.path.insert(0,parent_dir)
-from Reporter import *
-
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
-import easygui
+import pprint
+import numpy as np
+import pandas as pd
+import joblib
+import time
+
+from utils.BaseModel import BaseModel
+from utils.AwesomeTimeIt import timeit
+from utils.FeatureImportanceReport import report_feature_importance
+from utils.ClassificationReport import evaluate_classification
+from utils.FeatureImportanceReport import report_feature_importance
+from utils.PlotLosses import PlotLosses
 
 import keras
 from keras.models import Sequential, load_model
 from keras.layers import Dense
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping
 from keras import regularizers
-from keras.utils import np_utils
 from keras.models import model_from_json
 
 from keras.regularizers import l1, l2
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 from sklearn.metrics import f1_score
 from keras.layers import Dropout
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
         
-class Classifier(Report):
-    
-    """
-        in case of any problem
-        https://machinelearningmastery.com/save-load-keras-deep-learning-models/
-        
-        Assumptions:
-            1. It is assumed that Y is placed in the last column of the data set
-    """
+class DNNC(BaseModel):
 
-    def __init__(self, dataset = pd.DataFrame(),
-                 name = None,
-                 classes = [-1,0,1],
-                 should_shuffle = True,
-                 split_size = 0.4,
-                 n_top_features = 10):
+    def __init__(self, name, model_name, dl):
         
-        super(Classifier, self).__init__(name, 'DNN')
+        super().__init__(name, model_name, dl)
         
-        self.dataset = open_csv(name)
-        self.n_top_features = n_top_features
-            
-        self.dataset = shuffle(self.dataset) if should_shuffle else self.dataset
-        
-        #splitting data into X and Y
-        X = self.dataset.iloc[:,:-1]
-        Y = self.dataset.iloc[:,-1]
-        
-        dates = self.dataset.index
-        
-        # encode class values as integers
-        encoder = LabelEncoder()
-        encoder.fit(Y)
-        encoded_Y = encoder.transform(Y)
-        # convert integers to dummy variables (i.e. one hot encoded)
-        dummy_y = np_utils.to_categorical(encoded_Y)
+        self.n_top_features = dl.n_top_features
+        self.k = dl.k
 
-        # Splitting the original Y
-        self.Y_original_train, Y_original_temp = train_test_split(Y, test_size = split_size, shuffle=False)
-        self.Y_original_cv, self.Y_original_test = train_test_split(Y_original_temp, test_size = 0.5, shuffle=False)
-         
-        #splitting data into train, cross_validation, test
-        self.X_train, X_temp, self.Y_train, Y_temp, self.train_dates, temp_dates = train_test_split(X, dummy_y, dates, test_size=split_size, shuffle=False)
-        X_cv, X_test, self.Y_cv, self.Y_test, self.cv_dates, self.test_dates = train_test_split(X_temp, Y_temp, temp_dates, test_size = 0.5, shuffle=False)
-        self.X_cv, self.X_test = X_cv.values, X_test.values
+        self.X_train, self.X_cv, self.X_test, \
+            self.Y_train, self.Y_cv, self.Y_test, \
+                self.Y_original_train, self.Y_original_cv, self.Y_original_test, \
+                    self.dates_train, self.dates_cv, self.dates_test = dl.load_for_classification()
 
+        self.input_dim = len(self.X_train.columns)
+
+    def set_classes(self, classes):
         self.classes = [str(i) for i in classes]
         self.number_of_classes = len(classes)
-        self.input_dim = len(self.X_train.columns)
-    
-    def setLayers(self,layers):
+
+    def set_layers(self,layers):
         self.layers=layers
     
-    def setInputActivationFunction(self, activation_function):
+    def set_input_activation_function(self, activation_function):
         self.input_activation_func = activation_function
     
-    def setHiddenActivationFunction(self, hidden_activation_func):
+    def set_hidden_activation_function(self, hidden_activation_func):
         self.hidden_activation_func = hidden_activation_func
     
-    def setFinalActivationFunction(self, final_activation_func):
+    def set_final_activation_function(self, final_activation_func):
         self.final_activation_func = final_activation_func
     
-    def setLossFunction(self, loss_func):
+    def set_loss_function(self, loss_func):
         self.loss_func = loss_func
     
-    def setEpochs(self, epochs):
+    def set_epochs(self, epochs):
         self.epochs = epochs
         
-    def setMinDelta(self, min_delta):
+    def set_min_delta(self, min_delta):
         self.min_delta = min_delta
         
-    def setPatience(self, patience):
+    def set_patience(self, patience):
         self.patience = patience
     
-    def setBatchSize(self, batch_size):
+    def set_batch_size(self, batch_size):
         self.batch_size = batch_size
         
-    def shouldEarlyStop(self, val):
+    def should_early_stop(self, val):
         self.should_early_stop = val
     
-    def shouldPlot(self, val):
-        self.should_plot_live_error = val       
+    def should_plot_live(self, val):
+        self.should_plot_live_error = val
+
+    def should_checkpoint(self, val):
+        self.should_checkpoint = val     
         
-    def setReg(self, reg_param, type='l1'):
-        self.l = l1 if type == 'l1' else l2
+    def set_reg(self, reg_param, regul_type='l1'):
+        self.regul_type = regul_type
+        self.l = l1 if regul_type == 'l1' else l2
         self.reg_param = reg_param
     
-    def setOptimizer(self,val):
+    def set_optimizer(self,val):
         self.optimizer = val
+
+    def _get_call_backs(self):
+        # Creating Early Stopping function and other callbacks
+        call_back_list = []
+        early_stopping = EarlyStopping(monitor='loss',
+                                        min_delta = self.min_delta,
+                                        patience=self.patience,
+                                        verbose=1,
+                                        mode='auto') 
+        plot_losses = PlotLosses()
     
-    def runTrainingCurve(self, steps = 10, should_save_fig = True):
-        
-        
-        print ("\nTrainig curve is about to be produced....\nIt will take a while, plese be patient...\n")
-        self.log.info("\nTrainig curve is about to be produced....\nIt will take a while, plese be patient...\n")
+        if self.should_early_stop:
+            call_back_list.append(early_stopping)
+        if self.should_plot_live_error:
+            call_back_list.append(plot_losses)
+        if self.should_checkpoint:
+            checkpoint = ModelCheckpoint(os.path.join(self.directory,
+                                                    f'{self.name}-BestModel.h5'),
+                                                    monitor='val_loss',
+                                                    verbose=1,
+                                                    save_best_only=True,
+                                                    mode='auto')
+            call_back_list.append(checkpoint)
+
+        return call_back_list
+
+    def log_hyperparameters(self):
+        self.log.info(pprint.pformat({'layers': self.layers,
+                                    'input_activation_func': self.input_activation_func,
+                                    'hidden_activation_func': self.hidden_activation_func,
+                                    'final_activation_func': self.final_activation_func,
+                                    'loss_func': self.loss_func,
+                                    'epochs': self.epochs,
+                                    'min_delta': self.min_delta,
+                                    'patience': self.patience,
+                                    'batch_size': self.batch_size,
+                                    'should_early_stop': self.should_early_stop,
+                                    'regularization_type': self.regul_type,
+                                    'reg_param': self.reg_param,
+                                    'random_state': self.dl.random_state}))
+
+    def _construct_model(self, reg = None):
+
+        self.log_hyperparameters()
+
+        if reg is None:
+            reg = self.reg_param
+
+        model = Sequential()
+        model.add(Dense(self.layers[0],
+                        input_dim = self.input_dim,
+                        activation = self.input_activation_func,
+                        kernel_regularizer=self.l(reg)))
+        for ind in range(1,len(self.layers)):
+            model.add(Dense(self.layers[ind],
+                            activation = self.hidden_activation_func,
+                            kernel_regularizer=self.l(reg)))
+        model.add(Dense(self.number_of_classes, activation = self.final_activation_func))
+         
+        # Compile model
+        model.compile(loss=self.loss_func,
+                        optimizer=self.optimizer,
+                        metrics = ['CategoricalAccuracy'])
+
+        return model
+    
+    @timeit
+    def run_learning_curve(self, steps = 10):
         
         l = len(self.X_train)
         
@@ -136,213 +175,165 @@ class Classifier(Report):
             Y_train = self.Y_train[:indexer]
              
             #creating the structure of the neural network
-            model = Sequential()
-            model.add(Dense(self.layers[0], input_dim = self.input_dim, activation = self.input_activation_funciton))
-            for ind in range(1,len(self.layers)):
-                model.add(Dense(self.layers[ind], activation = self.hidden_activation_func))
-            model.add(Dense(self.number_of_classes, activation=self.final_activation_func))
-             
-            # Compile model
-            model.compile(loss=self.loss_func, optimizer='Adam')
-             
-            # Creating Early Stopping function and other callbacks
-            call_back_list = []
-            early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-            plot_losses = PlotLosses(i)
-        
-            if self.should_early_stop:
-                call_back_list.append(early_stopping)
-            if self.should_plot_live_error:
-                call_back_list.append(plot_losses) 
+            model, call_back_list = self._construct_model(reg = 0), self._get_call_bakcs()
              
             # Fit the model
-            X_train = X_train.values
-            model.fit(X_train, Y_train, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
+            model.fit(X_train.values, Y_train.values,
+                        validation_data=(self.X_cv, self.Y_cv),
+                        epochs=self.epochs,
+                        batch_size=self.batch_size,
+                        shuffle=True,
+                        verbose=2,
+                        callbacks=call_back_list)
             plot_losses.closePlot()
             
             # Evaluate the model
             train_scores = model.evaluate(X_train, Y_train, verbose=2)
             cv_scores = model.evaluate(self.X_cv, self.Y_cv, verbose=2)
-            
-            print ("Step", i, "training loss:" , train_scores, "cross validation loss:", cv_scores)
-            self.log.info("Step %d, training loss:%0.5f, cross validation loss:%0.5f" %(i, train_scores, cv_scores))
              
             # Add errors to list
             train_errors.append(train_scores)
             cv_errors.append(cv_scores)
              
-            print ("---Step %d is done--\n---------------------\n" %(i))
+            print (f"---Step {d} is done---")
         
+        train_cv_analyzer_plotter(train_errors, cv_errors, self.directory, 'TrainingCurve', xticks = None)
         
-        # Serialize model to JSON
-        save_address = self.directory + "/" + self.name 
-        model_json = model.to_json()
-        with open(save_address + ".json" , "w") as json_file:
-            json_file.write(model_json)
-        # Serialize weights to HDF5
-        model.save_weights(save_address + ".h5")
-        print ("---------------------\nModel is Saved")
-
-        
-        # Creating X values for plot
-        x_axis = [i for i in range(1,steps+1)]
-        
-        # Plot
-        plt.clf()
-        plt.xlabel('Step')
-        plt.ylabel('Error - MSE')
-        plt.title(self.name+'Training Curve')
-        plt.plot(x_axis, cv_errors, label = 'CV-err')
-        plt.plot(x_axis, train_errors, label = 'Train-err')
-        
-        plt.legend()
-        plt.grid(True)
-        
-        if should_save_fig:
-            plt.savefig(self.directory + '/TC-' + self.name + '.png')
-        plt.show()
-        
-    def runRegularizationParameterAnalysis(self, first_guess = 0.001, final_value = 3, increment = 2, should_save_fig = True):
+    def run_regularization_parameter_analysis(self, first_guess = 0.001,
+                                                    final_value = 3,
+                                                    increment = 2):
         
         # Creating empty list for errors
-        cv_errors, train_errors = [], []
-        
-        X_train, Y_train = self.X_train.values, self.Y_train
-        
+        cv_errors, train_errors, xticks = [], [], []
         
         reg = first_guess
         while reg < final_value:
-            
+
+            xticks.append(f"{reg:.2E}")
             #creating the structure of the neural network
-            model = Sequential()
-             
-            model.add(Dense(self.layers[0], input_dim = self.input_dim, activation = self.input_activation_funciton, kernel_regularizer=self.l(reg)))
-            for ind in range(1,len(self.layers)):
-                model.add(Dense(self.layers[ind], activation = self.hidden_activation_func, kernel_regularizer=self.l(reg)))
-            model.add(Dense(self.number_of_classes, activation = self.final_activation_func, kernel_regularizer=self.l(reg)))
-             
-            # Compile model
-            model.compile(loss=self.loss_func, optimizer='Adam')
-            
-            # Creating Early Stopping function and other callbacks
-            call_back_list = []
-            early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-            plot_losses = PlotLosses(reg)
-        
-            if self.should_early_stop:
-                call_back_list.append(early_stopping)
-            if self.should_plot_live_error:
-                call_back_list.append(plot_losses)
+            model = self._construct_model(reg = reg)
+            call_back_list = self._get_call_bakcs()
             
             # Fit the model
-            model.fit(X_train, Y_train, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size,
-                      shuffle=True, verbose=2, callbacks=call_back_list)
+            model.fit(self.X_train.value, self.Y_train.values,
+                        validation_data=(self.X_cv, self.Y_cv),
+                        epochs=self.epochs,
+                        batch_size=self.batch_size,
+                        shuffle=True, verbose=2, callbacks=call_back_list)
             plot_losses = PlotLosses(reg)
              
             # evaluate the model
-            train_scores = model.evaluate(X_train, Y_train, verbose=0)
-            cv_scores = model.evaluate(self.X_cv, self.Y_cv, verbose=0)
-             
-            cv_errors.append(cv_scores)
-            train_errors.append(train_scores)
-            
-            print (f"err_training: {train_scores:0.4f}, cv_err: {cv_scores:0.4f}")
-            self.log.info("\nerr_training:%0.4f, cv_err:%0.4f\n" %(train_scores, cv_scores))
-            
-            print ("---Fitting with %s as regularization parameter is done---" %str(reg))
-            self.log.info("\n---Fitting with %s as regularization parameter is done---\n" %str(reg))
-            
+            train_errors.append(model.evaluate(X_train, Y_train, verbose=0))
+            cv_errors.append(model.evaluate(self.X_cv, self.Y_cv, verbose=0))
+
+            print (f"---Fitting with {reg:.2E} as regularization parameter is done---")
             reg = reg*increment
-             
-        
-        
-        x_axis = [(i+1) for i in range(len(cv_errors))]
-        
-        plt.clf()
-        plt.xlabel('Regularization Paremeter Step')
-        plt.ylabel('Error - MSE')
-        plt.title(self.name+'Regularization Analysis')
-        plt.plot(x_axis, cv_errors, label = 'CV-err')
-        plt.plot(x_axis, train_errors, label = 'Train-err')
-        
-        plt.legend()
-        plt.grid(True)
-        
-        if should_save_fig:
-            plt.savefig(self.directory + '/RA-' + self.name + '.png')
-        plt.show()
     
-    def runDropOutAnalysis(self, first_guess = 0.1, final_value = 0.9, increment = 0.1, should_save_fig = True):
-        
-        # Creating empty list for errors
-        cv_errors, train_errors = [], []
-        
-        X_train, Y_train = self.X_train.values, self.Y_train
-        
-        
-        drop = first_guess
-        while drop < final_value:
-            
-            #creating the structure of the neural network
-            model = Sequential()
-             
-            model.add(Dense(self.layers[0], input_dim = self.input_dim, activation = self.input_activation_funciton, kernel_dropularizer=dropularizers.l2(drop)))
-            model.add(Dropout(drop))
-            for ind in range(1,len(self.layers)):
-                model.add(Dense(self.layers[ind], activation = self.hidden_activation_func))
-                model.add(Dropout(drop))
-            model.add(Dense(self.number_of_classes, activation = self.final_activation_func))
-             
-            # Compile model
-            model.compile(loss=self.loss_func, optimizer='Adam')
-            
-            # Creating Early Stopping function and other callbacks
-            call_back_list = []
-            early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-            plot_losses = PlotLosses(drop)
-        
-            if self.should_early_stop:
-                call_back_list.append(early_stopping)
-            if self.should_plot_live_error:
-                call_back_list.append(plot_losses)
-            
-            # Fit the model
-            model.fit(X_train, Y_train, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size,
-                      shuffle=True, verbose=2, callbacks=call_back_list)
-            plot_losses = PlotLosses(drop)
-             
-            # evaluate the model
-            train_scores = model.evaluate(X_train, Y_train, verbose=0)
-            cv_scores = model.evaluate(self.X_cv, self.Y_cv, verbose=0)
-             
-            cv_errors.append(cv_scores)
-            train_errors.append(train_scores)
-            
-            print ("err_training:", train_scores, "cv_err:", cv_scores)
-            self.log.info("\nerr_training:%0.4f \ncv_err:%0.4f\n" %(train_scores, cv_scores))
-            
-            drop = drop + increment
-             
-            print ("---Fitting with %s as drop parameter is done---" %str(drop))
-            self.log.info("\n---Fitting with %s as drop parameter is done---\n" %str(drop))
-        
-        
-        x_axis = [(i+1) for i in range(len(cv_errors))]
-        
-        plt.clf()
-        plt.xlabel('drop Paremeter Step')
-        plt.ylabel('Error - MSE')
-        plt.title(self.name+'drop Analysis')
-        plt.plot(x_axis, cv_errors, label = 'CV-err')
-        plt.plot(x_axis, train_errors, label = 'Train-err')
-        
-        plt.legend()
-        plt.grid(True)
-        
-        if should_save_fig:
-            plt.savefig(self.directory + '/RA-' + self.name + '.png')
-        plt.show()
+        train_cv_analyzer_plotter(train_errors, cv_errors, self.directory, 'TrainingCurve', xticks = None)
     
+    def fit_model(self, drop=0, warm_up = False):
+        
+        constructed = False
+        if warm_up:
+            try:
+                self.load_model()
+                constructed = True
+                self.log.info("\n\n------------\nA trained model is loaded\n------------\n\n")
+            except OSError:
+                print ("The model is not trained before. No saved models found")
+        
+        if not constructed:
+            # Creating the structure of the neural network
+            self.model = self._construct_model()
+            
+            # A summary of the model
+            stringlist = []
+            self.model.summary(print_fn=lambda x: stringlist.append(x))
+            short_model_summary = "\n".join(stringlist)
+            self.log.info(short_model_summary)
+
+        call_back_list = self._get_call_backs()
+
+        start = time.time()
+        # Fit the model
+        hist = self.model.fit(self.X_train, self.Y_train,
+                            validation_data=(self.X_cv, self.Y_cv),
+                            epochs=self.epochs,
+                            batch_size=self.batch_size,
+                            verbose = 2, shuffle=True, callbacks=call_back_list)
+
+        # Logging call_back history
+        hist_df = pd.DataFrame.from_dict(hist.history)
+        hist_df.to_csv(f"{self.directory}/{self.loss_func}-hist.csv")
+        print (f"********* {time.time()-start:.4f} ***********")
+
+        # Closing the plot losses
+        try:
+            for call_back in call_back_list:
+                call_back.closePlot()
+        except:
+            pass
+    
+        # Evaluate the model
+        train_scores = self.model.evaluate(self.X_train, self.Y_train, verbose=2)
+        cv_scores = self.model.evaluate(self.X_cv, self.Y_cv, verbose=2)
+        test_scores = self.model.evaluate(self.X_test, self.Y_test, verbose=2)
+        
+        print ()
+        print (f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
+        self.log.info(f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
+
+        self.save_model()
+    
+    def load_model(self):
+        
+        # load json and create model
+        model_type = 'BestModel' if self.should_checkpoint else 'SavedModel'
+        self.model = load_model(self.directory + "/" +  f"{self.name}-{model_type}.h5")
+
+    def save_model(self):
+        save_address = self.directory + "/" + self.name 
+        self.model.save(save_address + "-SavedModel.h5", save_format = 'h5')
+    
+    def predict_set(self, X, threshold = 0.5, neutral_class = '3'):
+        
+        # The model should be loaded prior to running this section
+        Y_predicted_weighted = self.model.predict(X)
+        Y_predicted = []
+            
+        for pred in Y_predicted_weighted:
+                num_of_categorized = 0
+                predicted_class = 0
+                for cat_pred in pred:
+                    if cat_pred >= threshold:
+                        num_of_categorized += 1
+                        predicted_class = self.classes[list(pred).index(cat_pred)]
+                
+                if num_of_categorized == 1:
+                    Y_predicted.append(predicted_class)
+                else:
+                    Y_predicted.append(neutral_class)
+        
+        predicted = list(map(int,Y_predicted[:]))
+        
+        
+        return predicted
+    
+    def get_report(self):
+
+        self.load_model()
+
+        y_train_pred = self.predict_set(self.X_train)
+        y_test_pred = self.predict_set(self.X_test)
+
+        evaluate_classification(['OnTrain', self.X_train, self.Y_original_train, self.dates_train, y_train_pred],
+                                ['OnTest', self.X_test, self.Y_original_test, self.dates_test, y_test_pred],
+                                direc = self.directory,
+                                model = self.model,
+                                model_name = self.model_name,
+                                logger = self.log,
+                                slicer = 1)
+
     def thresholOptimization(self, neutral_class = '0', objective_classes = [-1,1], increment = 0.02, should_save_fig = True):
         
         # Model should be loaded prior to threshold optimizatio
@@ -403,163 +394,3 @@ class Classifier(Report):
         if should_save_fig:
             plt.savefig(self.directory + '/Threshold-' + self.name + '.png')
         plt.show()
-    
-    def fitModel(self, drop=0.5):
-        
-        
-        X_train, Y_train = self.X_train.values, self.Y_train
-        
-        #creating the structure of the neural network
-        model = Sequential()
-        model.add(Dense(self.layers[0],
-                        input_dim = self.input_dim,
-                        activation = self.input_activation_func,
-                        kernel_regularizer=self.l(self.reg_param)))
-        model.add(Dropout(drop))
-        
-        for ind in range(1,len(self.layers)):
-            model.add(Dense(self.layers[ind],
-                            activation = self.hidden_activation_func,
-                            kernel_regularizer=self.l(self.reg_param)))
-            model.add(Dropout(drop))
-            
-        model.add(Dense(self.number_of_classes, activation = self.final_activation_func, kernel_regularizer=self.l(self.reg_param)))
-         
-        # Compile model
-        model.compile(loss=self.loss_func, optimizer=self.optimizer, metrics=['accuracy'])
-        
-        model.summary(print_fn=self.log.info)
-        
-        # Creating Early Stopping function and other callbacks
-        call_back_list = []
-        early_stopping = EarlyStopping(monitor='loss', min_delta = self.min_delta, patience=self.patience, verbose=1, mode='auto') 
-        plot_losses = PlotLosses(0)
-    
-        if self.should_early_stop:
-            call_back_list.append(early_stopping)
-        if self.should_plot_live_error:
-            call_back_list.append(plot_losses) 
-         
-        # Fit the model
-        X_train = self.X_train.values
-        model.fit(X_train, Y_train, validation_data=(self.X_cv, self.Y_cv), epochs=self.epochs, batch_size=self.batch_size, shuffle=True, verbose=2, callbacks=call_back_list)
-        plot_losses.closePlot()
-        
-        model.summary()
-        
-        # Evaluate the model
-        train_scores = model.evaluate(X_train, Y_train, verbose=2)
-        cv_scores = model.evaluate(self.X_cv, self.Y_cv, verbose=2)
-        test_scores = model.evaluate(self.X_test, self.Y_test, verbose=2)
-        
-        print (f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
-        self.log.info(f'Trian_err: {train_scores}, Cv_err: {cv_scores}, Test_err: {test_scores}')
-        
-        # Serialize model to JSON
-        save_address = self.directory + "/" + self.name 
-        model.save(save_address + ".h5")
-        print ("---------------------\nModel is Saved")
-        
-    def predict_set(self, X, threshold = 0.3, neutral_class = '0'):
-        
-        # The model should be loaded prior to running this section
-        Y_predicted_weighted = self.model.predict(X)
-        Y_predicted = []
-            
-        for pred in Y_predicted_weighted:
-                num_of_categorized = 0
-                predicted_class = 0
-                for cat_pred in pred:
-                    if cat_pred >= threshold:
-                        num_of_categorized += 1
-                        predicted_class = self.classes[list(pred).index(cat_pred)]
-                
-                if num_of_categorized == 1:
-                    Y_predicted.append(predicted_class)
-                else:
-                    Y_predicted.append(neutral_class)
-        
-        predicted = list(map(int,Y_predicted[:]))
-        
-        
-        return predicted
-    
-    @timeit
-    def sensitivity_vahid(self):
-        x = pd.DataFrame(self.X_test, columns = self.X_train.columns)
-        y = self.Y_test.copy()
-        cols = self.X_train.columns
-        
-        model_error = self.model.evaluate(x, y, verbose=2)
-        print (model_error)
-        print (f'Model Error: {model_error:.2f}')
-        
-        feature_importances_ = {}
-        for col in cols:
-            x_temp = x.copy()
-            temp_err = []
-            for _ in range(1):
-                np.random.shuffle(x_temp[col].values)
-                err = model_error - self.model.evaluate(x_temp, y, verbose=2)
-                temp_err.append(err)
-            feature_importances_[col] = abs(round(np.mean(temp_err),4)) if np.mean(temp_err)<0 else 0
-        
-        self.report_feature_importance(feature_importances_, self.n_top_features, label = 'FILL' )
-    
-    def loadModel(self):
-        
-        # load json and create model
-        address = self.directory + "/" +  self.name
-        self.model = load_model(address+ ".h5")
-        self.model.compile(loss=self.loss_func, optimizer=self.optimizer)
-        
-    
-    @timeit
-    def get_report(self, threshold = 0.3, neutral_class = '0'):
-        
-#         self.evaluate_classification(self.Y_original_train, self.predict_set(self.X_train), self.train_dates, 'OnTrain')
-#         self.evaluate_classification(self.Y_original_test, self.predict_set(self.X_test), self.test_dates, 'OnTest')
-        start = time.time()
-        self.shap_deep_classification(self.model, self.X_train[:1000], self.X_test, list(self.X_train.columns), num_top_features = self.n_top_features)
-        print (f"It took {time.time()-start:.2f} seconds")
-    
-        
-@timeit       
-def run():
-    
-    myClassifier = Classifier(dataset = 'Accident1', name = "Accident1", classes = [0,1,2],
-                              should_shuffle=True, split_size=0.2, n_top_features= 20)
-    
-    myClassifier.setLayers([200])
-    myClassifier.setLossFunction('categorical_crossentropy')
-    myClassifier.setEpochs(500)
-    
-    myClassifier.setInputActivationFunction('sigmoid')
-    myClassifier.setHiddenActivationFunction('relu')
-    myClassifier.setFinalActivationFunction('softmax')
-    
-    myClassifier.setOptimizer('Adam')
-    myClassifier.shouldPlot(False)
-    myClassifier.shouldEarlyStop(True)
-    
-    myClassifier.setBatchSize(2048)
-    myClassifier.setPatience(50)
-    myClassifier.setMinDelta(0.001)
-    
-    myClassifier.setReg(0.000003, 'l2')
-    
-    
-#     myClassifier.runTrainingCurve(steps=10)
-#     myClassifier.runRegularizationParameterAnalysis(first_guess = 0.0000001, final_value = 0.000001, increment = 2, should_save_fig=True)
-#     myClassifier.runDropOutAnalysis(first_guess=0.1, final_value=0.5, increment=0.1, should_save_fig=True)
-    
-#     myClassifier.fitModel(drop=0.5) 
-    myClassifier.loadModel()
-#     myClassifier.thresholOptimization(neutral_class=0, objective_classes=[1], increment = 0.01)
-    myClassifier.get_report(threshold = 0.3, neutral_class= '0')
-    myClassifier.sensitivity_vahid()
-
-if __name__ == "__main__":
-    run()
-
-        

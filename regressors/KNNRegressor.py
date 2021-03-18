@@ -1,3 +1,4 @@
+#Loading dependencies
 import numpy as np
 import joblib
 import pprint
@@ -9,8 +10,7 @@ from utils.AwesomeTimeIt import timeit
 from utils.RegressionReport import evaluate_regression
 from utils.FeatureImportanceReport import report_feature_importance
 
-from sklearn.metrics.regression import mean_squared_error
-import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import KNeighborsRegressor
 
 class KNNR(BaseModel):
@@ -38,16 +38,15 @@ class KNNR(BaseModel):
         model = KNeighborsRegressor(n_neighbors = n, n_jobs = -1)
         model.fit(self.X_train, self.Y_train)
 
-        evaluate_regression(self.directory, self.X_train,
-                            self.Y_train, model.predict(self.X_train),
-                            self.dates_train, 'KNN-OnTrain',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
-        evaluate_regression(self.directory, self.X_test,
-                            self.Y_test, model.predict(self.X_test),
-                            self.dates_test, 'KNN-OnTest',
-                            self.log, slicer = 1,
-                            should_log_inverse = self.data_loader.should_log_inverse)
+        evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                                ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                                direc = self.directory,
+                                model = model,
+                                model_name = self.model_name,
+                                logger = self.log,
+                                slicer = 1,
+                                should_check_hetero = True,
+                                should_log_inverse = self.data_loader.should_log_inverse)
 
         joblib.dump(model, self.directory + f"/KNN.pkl")
 

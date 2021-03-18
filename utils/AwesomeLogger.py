@@ -1,13 +1,21 @@
-import logging, sys
+import os
+import sys
+import logging
 
 class Logger(object):
 
-    def __init__(self, logger_name = 'Logger', address = '',
-                 level = logging.DEBUG, console_level = logging.ERROR,
-                 file_level = logging.DEBUG, mode = 'w'):
+    def __init__(self,
+                logger_name = 'Logger',
+                address = '',
+                level = logging.DEBUG,
+                console_level = logging.ERROR,
+                file_level = logging.DEBUG,
+                mode = 'w'):
         super(Logger, self).__init__()
 
         logging.basicConfig()
+
+        self.address = address
         
         self.instance = logging.getLogger(logger_name)
         self.instance.setLevel(level)
@@ -24,7 +32,7 @@ class Logger(object):
         self.instance.addHandler(file_handler)
     
     def _correct_message(self, message):
-        output = "\n----------------------------------------------------------\n"
+        output = "\n---------------------------------------------------------\n"
         output += message
         output += "\n---------------------------------------------------------\n"
         return output

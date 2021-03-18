@@ -1,86 +1,95 @@
-import os, sys
-parent_dir = os.path.split(os.path.dirname(__file__))[0]
-sys.path.insert(0,parent_dir)
-from Reporter import *
+#Loading dependencies
+import numpy as np
+import joblib
+import pprint
+
+from utils.BaseModel import BaseModel
+from utils.AwesomeTimeIt import timeit
+from utils.ClassificationReport import evaluate_classification
+from utils.FeatureImportanceReport import report_feature_importance
+from utils.SpecialPlotters import train_cv_analyzer_plotter
 
 from sklearn.svm import SVC
  
-class SVMC(Report):
-    
-    def __init__(self, df,
-                 name = None,
-                 should_shuffle = True,
-                 split_size = 0.4,
-                 is_imbalanced = False):
+class SVMC(BaseModel):
         
-        super(SVMC, self).__init__(name, 'SVC')
+    def __init__(self, name, dl):
         
-        self.X_train,self.X_cv,self.X_test,self.Y_train,self.Y_cv,self.Y_test,self.dates_train,self.dates_cv,self.dates_test = prepare_data_simple(df,
-                                                                                                                                                    split_size,
-                                                                                                                                                    is_cv = True,
-                                                                                                                                                    should_shuffle = should_shuffle,
-                                                                                                                                                    is_imbalanced = is_imbalanced)
+        super().__init__(name, 'SVC', dl)
         
-        self.log.info('-------------- SVC is about to be fit on %s '%self.name)
+        self.n_top_features = dl.n_top_features
+        self.k = dl.k
+        self.dl = dl
+        
+        self.X_train, self.X_test, self.Y_train, self.Y_test, \
+                self.dates_train, self.dates_test = dl.load_with_test()
+        
+        self.X, self.Y, _ = dl.load_all()
+
+    def set_params(self, **params):
+        
+        self.kernel = params.pop('kernel', 'rbf') 
+        self.gamma = params.pop('gamma', 'auto')
+        self.C = params.pop('C', 1)
+
+    def log_params(self):
+
+        self.log.info(pprint.pformat({
+            "Model_type": 'SVC',
+            'kernel': self.kernel,
+            'gamma': self.gamma,
+            'C': self.C,
+            'random_state': self.dl.random_state
+            }))
     
     @timeit
-    def fit(self, C=1):
+    def fit(self):
+
+        self.set_params()
+        self.log_params()
         
-        model = SVC(C=1, kernel= "rbf", gamma = 'auto')
-        model.fit(self.X_train, self.Y_train)
+        self.model = SVC(C = self.C,
+                        kernel= self.kernel,
+                        gamma = self.gamma)
+        self.model.fit(self.X_train, self.Y_train)
+
+        evaluate_classification(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                                ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                                direc = self.directory,
+                                model = self.model,
+                                model_name = self.model_name,
+                                logger = self.log,
+                                slicer = 1)
         
-        self.evaluate_classification(self.Y_train, model.predict(self.X_train), self.dates_train, 'SCV-OnTrain')
-        self.evaluate_classification(self.Y_test, model.predict(self.X_test), self.dates_test, 'SVC-OnTest')
+        joblib.dump(self.model, self.directory + f"/{self.model_name}.pkl")
+        
+        # Plotting the Importances
+        if self.kernel == 'linear':
+            report_feature_importance(self.directory,
+                                    self.model.coef_[0],
+                                    self.X_train.columns,
+                                    self.n_top_features,
+                                    self.model_name,
+                                    self.log)
     
     @timeit
     def regularization_analysis(self, start = 1, end = 100000, step = 2):
+
+        train_error, cv_error = [], []
+        xticks = []
         
-        train_error = []
-        cv_error = []
-        x = []
-         
         i = start
         while i < end:
             
-            
-            model = SVC(C=i, kernel= "rbf", gamma = 'auto')
+            xticks.append(i)
+            model = SVR(C=C, kernel= "rbf", epsilon = i, gamma = 'auto')
             model.fit(self.X_train, self.Y_train)
             
-            train_err, cv_err = 1-model.score(self.X_train, self.Y_train), 1-model.score(self.X_cv, self.Y_cv)
+            train_error.append(mean_squared_error(self.Y_train, model.predict(self.X_train)))
+            cv_error.append(mean_squared_error(self.Y_test, model.predict(self.X_test)))
             
-            train_error.append(train_err)
-            cv_error.append(cv_err)
-            
-            print (f"Step {i:.2} of SVM regularization - train_err={train_err:.4f} - cv_err={cv_err:.4f}")
-            
-            x.append(i)
+            print (f"Step {i} of SVM epsilon_analysis is done")
+        
             i = i *step
-        
-        plt.clf()
-        plt.xlabel('Steps')
-        plt.ylabel('Classification Error')
-        plt.title('Regularization Analysis')
-        plt.plot(x, train_error, label = 'Train_error')
-        plt.plot(x, cv_error, label = 'CV Error')
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(self.directory + '/SVC_Regularization Analysis.png')
-        plt.show()
-        plt.close()
-        
-        
-           
-def run():
-    mySVM = SVMC('MisCondV', 'MisCondV', 
-                 should_shuffle = True,
-                 split_size = 0.3,
-                 is_imbalanced = True)
-    mySVM.fit(C = 1)
-#     mySVM.regularization_analysis(start=0.01, end=10000, step=2)
-    
-    
 
-if __name__ == "__main__":
-    run()
-
-        
+        train_cv_analyzer_plotter(train_error, cv_error, self.directory, 'SVC_epsilon_analysis', xticks = xticks)

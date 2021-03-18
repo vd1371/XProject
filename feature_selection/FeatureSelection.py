@@ -88,7 +88,15 @@ class FeatureSelection(Report):
         top_corr_features = corrmat.index
         plt.figure(figsize=(200,200))
         #plot heat map
-        grid = sns.heatmap(self.data[top_corr_features].corr(), annot=False, cmap="RdYlGn", annot_kws={"size": 500}, cbar_kws={"shrink": 1}, xticklabels=True, yticklabels=True, square=True)
+        grid = sns.heatmap(self.data[top_corr_features].corr(),
+                            annot=False,
+                            cmap="RdYlGn",
+                            annot_kws={"size": 500},
+                            cbar_kws={"shrink": 1},
+                            xticklabels=True,
+                            yticklabels=True,
+                            square=True)
+        
         grid.tick_params(labelsize = 300)
         grid.set_xlabel("Features" ,fontsize=300, labelpad= 600)
         grid.set_ylabel("Features" ,fontsize=300, labelpad= 600)

@@ -20,7 +20,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.regularizers import l1, l2
 from keras.models import model_from_json
 
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics import mean_squared_error
 
 import matplotlib.pyplot as plt
 
@@ -191,8 +191,7 @@ class DNNR(BaseModel):
         
     def run_regularization_parameter_analysis(self, first_guess = 0.001,
                                                     final_value = 3,
-                                                    increment = 2,
-                                                    should_save_fig = True):
+                                                    increment = 2):
         
         # Creating empty list for errors
         cv_errors, train_errors, xticks = [], [], []
@@ -260,8 +259,6 @@ class DNNR(BaseModel):
         # Logging call_back history
         hist_df = pd.DataFrame.from_dict(hist.history)
         hist_df.to_csv(f"{self.directory}/{self.loss_func}-hist.csv")
-
-
         print (f"********* {time.time()-start:.4f} ***********")
 
         
@@ -301,27 +298,20 @@ class DNNR(BaseModel):
         y_pred_train = self.model.predict(self.X_train).reshape(1,-1)[0]
         y_pred_cv = self.model.predict(self.X_cv).reshape(1, -1)[0]
         y_pred_test = self.model.predict(self.X_test).reshape(1,-1)[0]
-        
-        evaluate_regression(self.directory, self.X_train, self.Y_train,
-                            y_pred_train, self.dates_train, f'{self.model_name}-OnTrain',
-                            self.log, slicer=slicer, should_check_hetero = False,
-                            should_log_inverse = self.data_loader.should_log_inverse)
-        evaluate_regression(self.directory, self.X_cv, self.Y_cv,
-                            y_pred_cv, self.dates_cv, f'{self.model_name}-OnCV',
-                            self.log, slicer=slicer, should_check_hetero = False,
-                            should_log_inverse = self.data_loader.should_log_inverse)
-        evaluate_regression(self.directory, self.X_test, self.Y_test,
-                            y_pred_test, self.dates_test, f'{self.model_name}-OnTest',
-                            self.log, slicer=slicer, should_check_hetero = True,
-                            should_log_inverse = self.data_loader.should_log_inverse)
 
         _, self.X_test_report, _, self.Y_test_report, \
                 _, self.dates_test_report = self.dl.load_with_test()
 
-        y_pred_test_report = self.model.predict(self.X_test_report).reshape(1,-1)[0]
-        evaluate_regression(self.directory, self.X_test_report, self.Y_test_report,
-                            y_pred_test_report, self.dates_test_report, f'{self.model_name}-ReportOnTest',
-                            self.log, slicer=slicer, should_check_hetero = True,
+        evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                            ['OnCV', self.X_cv, self.Y_cv, self.dates_cv],
+                            ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                            ['OnCVTest', self.X_test_report, self.Y_test_report, self.dates_test_report],
+                            direc = self.directory,
+                            model = self.model,
+                            model_name = self.model_name,
+                            logger = self.log,
+                            slicer = 1,
+                            should_check_hetero = True,
                             should_log_inverse = self.data_loader.should_log_inverse)
 
         if interpret:

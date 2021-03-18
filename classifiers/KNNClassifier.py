@@ -1,31 +1,44 @@
-import os, sys
-parent_dir = os.path.split(os.path.dirname(__file__))[0]
-sys.path.insert(0,parent_dir)
-from Reporter import *
+#Loading dependencies
+import numpy as np
+import joblib
+import pprint
+
+from utils.BaseModel import BaseModel
+from utils.AwesomeTimeIt import timeit
+from utils.FeatureImportanceReport import report_feature_importance
+from utils.ClassificationReport import evaluate_classification
+from utils.FeatureImportanceReport import report_feature_importance
 
 from sklearn.neighbors import KNeighborsClassifier
 
 
-class KNNC(Report):
+class KNNC(BaseModel):
     
-    def __init__(self, df,
-                 name = None,
-                 should_shuffle = True,
-                 split_size = 0.2):
+    def __init__(self, name, dl):
         
-        super(KNNC, self).__init__(name, 'KNN')
+        super().__init__(name, 'KNNC', dl)
         
-        self.X_train, self.X_test, self.Y_train, self.Y_test, self.dates_train, self.dates_test = prepare_data_simple(df, split_size, should_shuffle= should_shuffle)
-        self.log.info('-------------- KNN Classifier is about to be fit on %s '%self.name)
+        self.n_top_features = dl.n_top_features
+        self.k = dl.k
+        self.dl = dl
+        
+        self.X_train, self.X_test, self.Y_train, self.Y_test, \
+                self.dates_train, self.dates_test = dl.load_with_test()
     
     @timeit
     def fit(self, n = 5):
-        
+
+        self.log.info(f'KNN Classifier is about to be fit on {self.name} with n = {n}')
         model = KNeighborsClassifier(n_neighbors=n, n_jobs = -1)
         model.fit(self.X_train, self.Y_train)
         
-        self.evaluate_classification(self.Y_train, model.predict(self.X_train), self.dates_train, 'KNNC-OnTrain')
-        self.evaluate_classification(self.Y_test, model.predict(self.X_test), self.dates_test, 'KNNC-OnTest')
+        evaluate_classification(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+                                ['OnTest', self.X_test, self.Y_test, self.dates_test],
+                                direc = self.directory,
+                                model = model,
+                                model_name = model_name,
+                                logger = self.log,
+                                slicer = 1)
     
     @timeit
     def neighbour_analysis(self, start = 1, end = 20, step = 1):
