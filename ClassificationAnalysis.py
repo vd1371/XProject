@@ -94,7 +94,7 @@ if __name__ == "__main__":
 	import numpy as np
 	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'ImpactSplashOriginal'
+	file_name = 'AccidentsSeverityEncoded2019'
 
 	dl = DataLoader(df = file_name,
 					split_size = 0.2,

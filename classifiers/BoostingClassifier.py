@@ -36,16 +36,16 @@ class Boosting(BaseModel):
 
     def set_params(self, **params):
         
-        self.n_estimators = params.pop("n_estimators", 100)
-        self.learning_rate = params.pop("learning_rate", 0.1)
-        self.max_depth = params.pop("max_depth", 12)
+        self.n_estimators = params.pop("n_estimators", 500)
+        self.learning_rate = params.pop("learning_rate", 0.2)
+        self.max_depth = params.pop("max_depth", 14)
         self.n_jobs = params.pop("n_jobs", -1)
         self.verbose = params.pop("verbose", 1)
         self.objective = params.pop("objective", 'multi:softmax')
         # self.objective = params.pop("objective", 'binary:logistic')
         self.l1 = params.pop("reg_alpha", 0)
         self.l2 = params.pop('reg_lambda', 0.000001)
-        self.n_iter = params.pop("n_iter", 200)
+        self.n_iter = params.pop("n_iter", 1000)
 
     def log_params(self):
 
