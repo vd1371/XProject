@@ -14,7 +14,7 @@ def tree_classifier(name, data_loader):
 	from classifiers.TreesClassifier import Trees
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 500,
+	tr.set_params(n_estimators = 50,
 					max_depth = None,
 					min_samples_split=2,
 					min_samples_leaf=1,
@@ -22,7 +22,7 @@ def tree_classifier(name, data_loader):
 					should_cross_val=False,
 					n_jobs = -1)
 	
-	# tr.fit_decision_tree()
+	tr.fit_decision_tree()
 	tr.fit_random_forest()
 	# tr.fit_extra_trees()
 	# tr.fit_balanced_random_forest()
@@ -42,8 +42,20 @@ def boostigs(name, data_loader):
 	from classifiers.BoostingClassifier import Boosting
 
 	bst = Boosting(name, data_loader)
-	bst.set_params()
-	# bst.xgb_run()
+	bst.set_params(	max_depth = 12,
+					n_estimators = 2000,
+					learning_rate = 0.1,
+					gamma = 0,
+					min_child_weight = 1,
+					n_jobs = -1,
+					verbose = 1,
+					objective = 'multi:softmax',
+					# objective = 'binary:logistic',
+					reg_alpha = 0,
+					reg_lambda = 0.0000001,
+					n_iter = 2000)
+
+	bst.xgb_run()
 	bst.catboost_run(warm_up = False)
 
 def svm_classifier(name, data_loader):
@@ -94,12 +106,12 @@ if __name__ == "__main__":
 	import numpy as np
 	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'AccidentsSeverityEncoded2019'
+	file_name = 'Impact4'
 
 	dl = DataLoader(df = file_name,
 					split_size = 0.2,
-					should_shuffle=True,
-					is_imbalanced=False,
+					should_shuffle = True,
+					is_imbalanced = True,
 					random_state = 65,
 					k = 5,
 					n_top_features = 20,
@@ -107,8 +119,8 @@ if __name__ == "__main__":
 					should_log_inverse = False,
 					modelling_type = 'c')
 
-	# logistic_regression(file_name, dl)
-	# tree_classifier(file_name, dl)
+	logistic_regression(file_name, dl)
+	tree_classifier(file_name, dl)
 	# svm_classifier(file_name, dl)
 	boostigs(file_name, dl)
 	# knn_regressor(file_name, dl)

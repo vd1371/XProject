@@ -119,8 +119,13 @@ class Trees(BaseModel):
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
         
         # Plotting the Importances
-        report_feature_importance(self.directory, model.feature_importances_, self.X, self.Y,
-                                    self.n_top_features, model_name, self.log)
+        report_feature_importance(self.directory,
+                                    model.feature_importances_,
+                                    self.X,
+                                    self.Y,
+                                    self.n_top_features,
+                                    model_name,
+                                    self.log)
 
     
     def tune_trees(self, model, model_name,

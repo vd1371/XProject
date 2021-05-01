@@ -36,16 +36,19 @@ class Boosting(BaseModel):
 
     def set_params(self, **params):
         
-        self.n_estimators = params.pop("n_estimators", 500)
-        self.learning_rate = params.pop("learning_rate", 0.2)
-        self.max_depth = params.pop("max_depth", 14)
+        self.n_estimators = params.pop("n_estimators", 2000)
+        self.learning_rate = params.pop("learning_rate", 0.1)
+        self.max_depth = params.pop("max_depth", 12)
         self.n_jobs = params.pop("n_jobs", -1)
         self.verbose = params.pop("verbose", 1)
         self.objective = params.pop("objective", 'multi:softmax')
         # self.objective = params.pop("objective", 'binary:logistic')
         self.l1 = params.pop("reg_alpha", 0)
         self.l2 = params.pop('reg_lambda', 0.000001)
-        self.n_iter = params.pop("n_iter", 1000)
+        self.n_iter = params.pop("n_iter", 2000)
+
+        self.gamma = params.pop("gamma", 0)
+        self.min_child_weight = params.pop("min_child_weight", 1)
 
     def log_params(self):
 
@@ -57,6 +60,7 @@ class Boosting(BaseModel):
             "max_depth" : self.max_depth,
             "n_jobs" : self.n_jobs,
             "verbose" : self.verbose,
+            "gamma": self.gamma,
             "L1" : self.l1,
             "L2" : self.l2,
             "n_iter for catboost" : self.n_iter,
@@ -86,7 +90,11 @@ class Boosting(BaseModel):
                                     random_state = self.dl.random_state)
 
         eval_set = [(self.X_train, self.Y_train), (self.X_test, self.Y_test)]
-        model.fit(self.X_train, self.Y_train, eval_metric=metrics, eval_set=eval_set, verbose=self.verbose)
+        model.fit(self.X_train, self.Y_train,
+                    eval_metric=metrics,
+                    eval_set=eval_set,
+                    verbose=self.verbose,
+                    early_stopping_rounds = 50)
 
         feature_importances_ = model.get_booster().get_score(importance_type="gain")
         feature_importances_ = np.array(list(feature_importances_.values()))
@@ -108,11 +116,18 @@ class Boosting(BaseModel):
                                             depth = self.max_depth,
                                             l2_leaf_reg = self.l2,
                                             allow_writing_files=False,
-                                            eval_metric = 'Accuracy')
+                                            eval_metric = 'Accuracy',
+                                            task_type = 'CPU',
+                                            random_seed = 0,
+                                            # boosting_type = 'Ordered',
+                                            thread_count = -1)
 
             eval_set = ctb.Pool(self.X_test, self.Y_test)
 
-            model.fit(self.X_train, self.Y_train, eval_set = eval_set, plot=True)
+            model.fit(self.X_train, self.Y_train,
+                        eval_set = eval_set,
+                        plot=False,
+                        early_stopping_rounds=50)
 
             model.save_model(self.directory + f"/{model_name}")
 
@@ -141,4 +156,4 @@ class Boosting(BaseModel):
                                 self.n_top_features,
                                 model_name,
                                 self.log,
-                                should_plot_heatmap = True)
+                                should_plot_heatmap = False)

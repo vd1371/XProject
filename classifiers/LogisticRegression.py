@@ -30,8 +30,10 @@ class Logit(BaseModel):
     @timeit
     def fit(self):
         
-        model = LogisticRegression(C = 1, fit_intercept = True, penalty= 'l2', solver = 'lbfgs')
+        model = LogisticRegression(C = 1, fit_intercept = True, penalty= 'l1', solver = 'liblinear')
         model.fit(self.X_train, self.Y_train)
+
+        self.dl.log.info("---Model Coeffs---\n" + str(model.coef_))
 
         coeffs = {}
         for i in range (len(model.coef_[0])):

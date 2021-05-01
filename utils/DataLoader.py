@@ -167,10 +167,10 @@ class DataLoader():
             from imblearn.over_sampling import RandomOverSampler
             from imblearn.under_sampling import RandomUnderSampler
 
-            X_train, Y_train = RandomUnderSampler(sampling_strategy = self.sampling_strategy,
-                                                    random_state = self.random_state).fit_resample(X_train, Y_train)
+            # X_train, Y_train = RandomUnderSampler(sampling_strategy = self.sampling_strategy,
+                                                    # random_state = self.random_state).fit_resample(X_train, Y_train)
             X_train, Y_train = SMOTE(random_state = self.random_state).fit_resample(X_train, Y_train)
-            X_train, Y_train = RandomOverSampler(random_state = self.random_state).fit_resample(X_train, Y_train)
+            # X_train, Y_train = RandomOverSampler(random_state = self.random_state).fit_resample(X_train, Y_train)
 
             dates_train = ['Imb'+str(i) for i in range(len(X_train))]
         
