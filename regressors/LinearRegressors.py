@@ -119,13 +119,13 @@ class Linear(BaseModel):
 
             # Plotting the Importances
             coeffs = dict(zip(self.X_train.columns, model.coef_))
-            report_feature_importance(self.directory, model.coef_, self.X_train.columns,
-                                        self.n_top_features, model_name, self.log)
+            report_feature_importance(self.directory, model.coef_, self.X, self.Y,
+                                    self.n_top_features, model_name, self.log)
 
             self.log.info(f"{model_name} Coefficients:\n" + pprint.pformat(coeffs))
 
     @timeit
-    def analyze(self, model_name = 'Lasso', start = 0.000001, end=2, step=2):
+    def analyze(self, model_name = 'Lasso', start = 0.0000001, end=100, step=2):
 
         lin_model = Lasso if model_name.lower() is 'lasso' else Ridge
         train_error_list, cv_error_list, xticks = [], [], []

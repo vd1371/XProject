@@ -7,12 +7,12 @@ def tree_regressor(name, data_loader):
 	from regressors.TreesRegressors import Trees
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 10, max_depth = None, min_samples_split=2,
+	tr.set_params(n_estimators = 10, max_depth = 10, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=True)
 
 	tr.fit_random_forest()
-	tr.fit_decision_tree()
-	tr.fit_extra_trees()
+	# tr.fit_decision_tree()
+	# tr.fit_extra_trees()
 
 	# tr.tune_rees(RandomForestClassifier,
 	# 			'RF',
@@ -42,9 +42,10 @@ def linear_regressor(name, data_loader):
 					fit_intercept = True,
 					should_cross_val = False)
 	lin.fit_ols()
-	lin.fit_linear()
-	lin.fit_ridge()
+	# lin.fit_linear()
+	# lin.fit_ridge()
 	lin.fit_lasso()
+	# lin.analyze(model_name = 'Lasso', start = 0.000001, end=100, step=2)
 	# lin.fit('lasso', alpha = 0.002, should_analyze= False, start = 0.000001, end = 2, step = 2)
 	# lin.fit('ridge', alpha = 0.002, should_analyze= False, start = 0.000001, end = 2, step = 2)
 
@@ -92,7 +93,7 @@ if __name__ == '__main__':
 	import numpy as np
 	os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'Boston'
+	file_name = 'Fati35'
 	dl = DataLoader(df = file_name,
 					split_size = 0.1,
 					should_shuffle=True,
@@ -104,7 +105,7 @@ if __name__ == '__main__':
 					should_log_inverse = False,
 					modelling_type = 'r')
 
-	# linear_regressor(file_name, dl)
+	linear_regressor(file_name, dl)
 	# tree_regressor(file_name, dl)
 	# svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)

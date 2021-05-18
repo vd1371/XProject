@@ -1,5 +1,6 @@
 #Loading dependencies
 import numpy as np
+import pandas as pd
 import joblib
 import pprint
 
@@ -7,6 +8,7 @@ from utils.BaseModel import BaseModel
 from utils.AwesomeTimeIt import timeit
 from utils.FeatureImportanceReport import report_feature_importance
 from utils.ClassificationReport import evaluate_classification
+from utils.ROCPlotter import plot_roc
 from utils.FeatureImportanceReport import report_feature_importance
 
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
@@ -30,7 +32,7 @@ class Logit(BaseModel):
     @timeit
     def fit(self):
         
-        model = LogisticRegression(C = 1, fit_intercept = True, penalty= 'l1', solver = 'liblinear')
+        model = LogisticRegression(C = 100, fit_intercept = True, penalty= 'l1', solver = 'liblinear')
         model.fit(self.X_train, self.Y_train)
 
         self.dl.log.info("---Model Coeffs---\n" + str(model.coef_))
@@ -47,6 +49,11 @@ class Logit(BaseModel):
                                 model_name = self.model_name,
                                 logger = self.log,
                                 slicer = 1)
+
+        plot_roc(pd.get_dummies(self.Y_test, drop_first = False).values,
+                model.predict_proba(self.X_test),
+                self.dl.classes_,
+                self.directory)
         
         joblib.dump(model, self.directory + f"/Logit.pkl")
 

@@ -122,8 +122,13 @@ class Trees(BaseModel):
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
         
         # Plotting the Importances
-        report_feature_importance(self.directory, model.feature_importances_, self.X_train.columns,
-                                    self.n_top_features, model_name, self.log)
+        report_feature_importance(self.directory,
+                                    model.feature_importances_,
+                                    self.X,
+                                    self.Y,
+                                    self.n_top_features,
+                                    model_name,
+                                    self.log)
         
     @timeit
     def tune_trees(self, grid = {'n_estimators': [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)],

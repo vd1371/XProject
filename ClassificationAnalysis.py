@@ -55,7 +55,7 @@ def boostigs(name, data_loader):
 					reg_lambda = 0.0000001,
 					n_iter = 2000)
 
-	bst.xgb_run()
+	# bst.xgb_run()
 	bst.catboost_run(warm_up = False)
 
 def svm_classifier(name, data_loader):
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 	import numpy as np
 	# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'Impact4'
+	file_name = 'Impact5'
 
 	dl = DataLoader(df = file_name,
 					split_size = 0.2,
@@ -119,10 +119,10 @@ if __name__ == "__main__":
 					should_log_inverse = False,
 					modelling_type = 'c')
 
-	logistic_regression(file_name, dl)
+	# logistic_regression(file_name, dl)
 	tree_classifier(file_name, dl)
 	# svm_classifier(file_name, dl)
-	boostigs(file_name, dl)
+	# boostigs(file_name, dl)
 	# knn_regressor(file_name, dl)
 	# dnn_classifier(file_name, dl)
 	# random_classifier(file_name, dl)

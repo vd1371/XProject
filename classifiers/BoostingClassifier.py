@@ -1,5 +1,6 @@
 #Loading dependencies
 import numpy as np
+import pandas as pd
 import joblib
 import pprint
 
@@ -7,6 +8,7 @@ from utils.BaseModel import BaseModel
 from utils.AwesomeTimeIt import timeit
 from utils.FeatureImportanceReport import report_feature_importance
 from utils.ClassificationReport import evaluate_classification
+from utils.ROCPlotter import plot_roc
 from utils.FeatureImportanceReport import report_feature_importance
 
 from sklearn.model_selection import RandomizedSearchCV
@@ -157,3 +159,9 @@ class Boosting(BaseModel):
                                 model_name,
                                 self.log,
                                 should_plot_heatmap = False)
+
+        plot_roc(pd.get_dummies(self.Y_test, drop_first = False).values,
+                model.predict_proba(self.X_test),
+                self.dl.classes_,
+                self.directory)
+

@@ -1,5 +1,6 @@
 #Loading dependencies
 import numpy as np
+import pandas as pd
 import joblib
 import pprint
 
@@ -7,6 +8,7 @@ from utils.BaseModel import BaseModel
 from utils.AwesomeTimeIt import timeit
 from utils.FeatureImportanceReport import report_feature_importance
 from utils.ClassificationReport import evaluate_classification
+from utils.ROCPlotter import plot_roc
 from utils.FeatureImportanceReport import report_feature_importance
 
 from sklearn.model_selection import cross_val_score, cross_validate
@@ -41,7 +43,7 @@ class Trees(BaseModel):
     def set_params(self, **params):
         
         self.n_estimators = params.pop('n_estimators', 100) 
-        self.bootstrap = params.pop('bootstrap', 5)
+        self.bootstrap = params.pop('bootstrap', True)
         self.max_depth = params.pop('max_depth', 5)
         self.max_features = params.pop('max_features', 2)
         self.min_samples_leaf = params.pop('min_samples_leaf', 4)
@@ -117,6 +119,11 @@ class Trees(BaseModel):
                                 slicer = 1)
 
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
+
+        plot_roc(pd.get_dummies(self.Y_test, drop_first = False).values,
+                model.predict_proba(self.X_test),
+                self.dl.classes_,
+                self.directory)
         
         # Plotting the Importances
         report_feature_importance(self.directory,

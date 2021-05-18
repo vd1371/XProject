@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option("display.precision", 2)
+
 import io
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
+import warnings
 
 
 class DataLoader():
@@ -28,6 +30,9 @@ class DataLoader():
 
         if isinstance(df, str):
             self.df = pd.read_csv("./_data_storage/"+ df + ".csv", index_col = 0)
+
+            for col in self.df.columns[:-1]:
+                self.df[col] = (self.df[col] - self.df[col].min()) / (self.df[col].max() - self.df[col].min())
         
         elif isinstance(df, pd.DataFrame):
             self.df = df
@@ -40,6 +45,10 @@ class DataLoader():
 
         if self.should_log_inverse:
             self.df.iloc[:,-1] = np.log(self.df.iloc[:,-1])
+
+        if self.modelling_type == "c":
+            self.df.iloc[:, -1], self.encoder = encoded_classes(self.df.iloc[:, -1].values)
+            self.classes_ = self.encoder.classes_
 
         if self.should_shuffle:
             self.df = self.df.sample(frac = 1, random_state = self.random_state)
@@ -59,8 +68,12 @@ class DataLoader():
             logger.info(str(self.df.describe()))
 
             if self.modelling_type.lower() == 'c':
-                for col in self.df.columns:
+
+                for col in get_categorical_cols(self.df):
                     logger.info(str(self.df[col].value_counts()))
+
+                logger.info("Encoder and classes:\n" + \
+                                str(dict(zip(range(len(self.encoder.classes_)), self.encoder.classes_))))
 
             print ("Data description is logged...")
         
@@ -120,12 +133,8 @@ class DataLoader():
 
         X, Y, dates = self.load_all()
 
-        # encode class values as integers
-        encoder = LabelEncoder()
-        encoder.fit(Y)
-        encoded_Y = encoder.transform(Y)
         # convert integers to dummy variables (i.e. one hot encoded)
-        dummy_y = np_utils.to_categorical(encoded_Y)
+        dummy_y = np_utils.to_categorical(Y)
 
         # Splitting the original Y
         Y_original_train, Y_original_temp = train_test_split(Y,
@@ -198,6 +207,14 @@ class DataLoader():
         logger.info(self.df.info())
         logger.info(self.df.describe())
 
+def encoded_classes(Y):
+    # encode class values as integers
+    encoder = LabelEncoder()
+    encoder.fit(Y)
+    encoded_Y = encoder.transform(Y)
+
+    return Y, encoder
+
 
 def is_in_log_file(address, phrase):
 
@@ -208,3 +225,30 @@ def is_in_log_file(address, phrase):
         if phrase in line:
             return True
     return False
+
+def get_categorical_cols(df):
+    # This method is called when the categorical columns are not passed by the user
+
+    warning_message = "\n\n---------------------------------------\n" +\
+                    "The categorical_columns is not defined by you.\n" +\
+                    "I will try to find the categorical columns using heuristic methods.\n" +\
+                    "There is a small chance it fails. Consider passing the categorical_columns. \n" +\
+                    "---------------------------------------\n"
+    warnings.warn(warning_message, UserWarning , stacklevel = 2)
+
+    nominal_dtypes = ['object', 'bool', 'datetime64']
+
+    categorical_columns = []
+    for col in df.columns:
+
+        # Adding the string, boolean, and datetimes columns
+        if df[col].dtypes in nominal_dtypes:
+            categorical_columns.append(col)
+
+        # Checking the integer columns
+        elif pd.api.types.is_integer_dtype(df[col].dtypes):
+            # A heuristic method to check if the column in categorical
+            if df[col].nunique() / df[col].count() < 0.05:
+                categorical_columns.append(col)
+
+    return categorical_columns
