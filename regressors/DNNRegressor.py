@@ -312,7 +312,7 @@ class DNNR(BaseModel):
                             logger = self.log,
                             slicer = 1,
                             should_check_hetero = True,
-                            should_log_inverse = self.data_loader.should_log_inverse)
+                            should_log_inverse = self.dl.should_log_inverse)
 
         if interpret:
 

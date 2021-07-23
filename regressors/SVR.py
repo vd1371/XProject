@@ -56,8 +56,8 @@ class SVMR(BaseModel):
         self.model.fit(self.X_train, self.Y_train)
         
         if self.kernel == 'linear':
-            report_feature_importance(self.directory, self.model.coef_[0], self.X_train.columns,
-                                    self.n_top_features, 'SVR', self.log)
+            report_feature_importance(self.directory, self.model.coef_[0], self.X_train, self.Y_train,
+                                    self.n_top_features, 'SVR', self.log, False)
 
         evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
                                 ['OnTest', self.X_test, self.Y_test, self.dates_test],

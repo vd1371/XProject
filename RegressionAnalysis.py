@@ -7,11 +7,11 @@ def tree_regressor(name, data_loader):
 	from regressors.TreesRegressors import Trees
 	
 	tr = Trees(name, data_loader)
-	tr.set_params(n_estimators = 10, max_depth = 10, min_samples_split=2,
+	tr.set_params(n_estimators = 100, max_depth = 5, min_samples_split=2,
 				 min_samples_leaf=1, max_features='auto', should_cross_val=True)
 
-	tr.fit_random_forest()
-	# tr.fit_decision_tree()
+	# tr.fit_random_forest()
+	tr.fit_decision_tree()
 	# tr.fit_extra_trees()
 
 	# tr.tune_rees(RandomForestClassifier,
@@ -42,7 +42,7 @@ def linear_regressor(name, data_loader):
 					fit_intercept = True,
 					should_cross_val = False)
 	lin.fit_ols()
-	# lin.fit_linear()
+	lin.fit_linear()
 	# lin.fit_ridge()
 	lin.fit_lasso()
 	# lin.analyze(model_name = 'Lasso', start = 0.000001, end=100, step=2)
@@ -61,11 +61,11 @@ def dnn_regressor(name, data_loader):
 	from regressors.DNNRegressor import DNNR
 	myRegressor = DNNR(name, 'ANN', data_loader)
 	
-	myRegressor.set_layers([18])
+	myRegressor.set_layers([40])
 	# myRegressor.set_loss_function('mean_absolute_percentage_error')
 	# myRegressor.set_loss_function('mean_squared_logarithmic_error')
 	myRegressor.set_loss_function('mse')
-	myRegressor.set_epochs(10)
+	myRegressor.set_epochs(500)
 
 	myRegressor.set_input_activation_function('tanh')
 	myRegressor.set_hidden_activation_function('relu')
@@ -93,9 +93,9 @@ if __name__ == '__main__':
 	import numpy as np
 	os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-	file_name = 'Fati35'
+	file_name = 'Hacka2-Scaled-Ran-WithoutFinancials'
 	dl = DataLoader(df = file_name,
-					split_size = 0.1,
+					split_size = 0.3,
 					should_shuffle=True,
 					is_imbalanced=False,
 					random_state = 132,
@@ -106,8 +106,8 @@ if __name__ == '__main__':
 					modelling_type = 'r')
 
 	linear_regressor(file_name, dl)
-	# tree_regressor(file_name, dl)
-	# svm_regressor(file_name, dl)
+	tree_regressor(file_name, dl)
+	svm_regressor(file_name, dl)
 	# knn_regressor(file_name, dl)
-	# dnn_regressor(file_name, dl)
+	dnn_regressor(file_name, dl)
 
