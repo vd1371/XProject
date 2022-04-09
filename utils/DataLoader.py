@@ -16,31 +16,28 @@ class DataLoader():
     def __init__(self, **params):
         print ("About to load the data...")
 
-        df = params.pop("df")
-        self.split_size = params.pop("split_size", 0.2)
-        self.random_state = params.pop("random_state", None)
-        self.should_shuffle = params.pop("should_shuffle", True)
-        self.is_imbalanced = params.pop("is_imbalanced", False)
-        self.sampling_strategy = params.pop('sampling_strategy', {3: 180000, 2: 120000})
-        self.modelling_type = params.pop("modelling_type", "r")
-        self.k = params.pop("k", 5)
-        self.n_top_features = params.pop("n_top_features", 5)
-        self.n_samples = params.pop("n_samples", None)
-        self.should_log_inverse = params.pop("should_log_inverse", False)
+        self.project_name = params.get("project_name")
+        self.split_size = params.get("split_size", 0.2)
+        self.random_state = params.get("random_state", None)
+        self.should_shuffle = params.get("should_shuffle", True)
+        self.is_imbalanced = params.get("is_imbalanced", False)
+        self.sampling_strategy = params.get('sampling_strategy', {3: 180000, 2: 120000})
+        self.modelling_type = params.get("modelling_type", "r")
+        self.k = params.get("k", 5)
+        self.n_top_features = params.get("n_top_features", 5)
+        self.n_samples = params.get("n_samples", None)
+        self.should_log_inverse = params.get("should_log_inverse", False)
+        self.should_check_hetero = params.get("should_check_hetero", False)
+        self.project_name = params.get("project_name")
 
-        if isinstance(df, str):
-            self.df = pd.read_csv("./_data_storage/"+ df + ".csv", index_col = 0)
-
-            for col in self.df.columns[:-1]:
-                self.df[col] = (self.df[col] - self.df[col].min()) / (self.df[col].max() - self.df[col].min())
+        self.file_name, df = params.get("df")
+        if isinstance(self.file_name, str):
+            self.df = pd.read_csv("./_data_storage/"+ self.file_name + ".csv", index_col = 0)
         
-        elif isinstance(df, pd.DataFrame):
+        if isinstance(df, pd.DataFrame):
             self.df = df
 
-        else:
-            raise ValueError ("Unsupported input format for dataloader. It should be str or DataFrame")
-
-        if not self.n_samples is None:
+        if not self.n_samples == None:
             self.df = self.df.iloc[:n_samples, :]
 
         if self.should_log_inverse:
@@ -92,7 +89,14 @@ class DataLoader():
                     f"n_samples: {self.n_samples}\n")
 
     def load_all(self):
+
+        for col in self.df.columns[:]:
+                self.df[col] = (self.df[col] - self.df[col].min()) / (self.df[col].max() - self.df[col].min())
+
         X, Y, dates = self.df.iloc[:,:-1], self.df.iloc[:,-1], self.df.index
+
+        # X = X[['CPI', 'HSI-Close', 'InterestRate', 'HATPI', 'HATPI-Trend', 'A', 'B', 'ADW-Trend', 'CFA', 'BWTPI']]
+
         return X, Y, dates
 
     def load_with_test(self):

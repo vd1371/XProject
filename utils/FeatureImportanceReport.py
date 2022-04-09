@@ -17,13 +17,14 @@ def report_feature_importance(direc,
                             should_plot_heatmap = False):
 
     print ("About to conduct feature importance")
-    features_names = X.columns
+    features_names = list(X.columns)
     
     best_features = dict(zip(features_names, abs(features_vals)))
     features_ = pd.Series(OrderedDict(sorted(best_features.items(), key=lambda t: t[1], reverse =True)))
     
     L = len(features_names)
-    logger.info(f"Feature importance based on {label}\n" + pprint.pformat(features_.nlargest(max(L, n_top_features))))
+
+    logger.info(f"Feature importance based on {label}\n" + pprint.pformat(features_.nlargest(min(L, n_top_features))))
 
     plt.clf()
     ax = features_.nlargest(n_top_features).sort_values(ascending=True).plot(kind='barh', title = label)

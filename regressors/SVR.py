@@ -13,9 +13,9 @@ from sklearn.svm import SVR
 
 class SVMR(BaseModel):
 
-    def __init__(self, name, dl):
+    def __init__(self, dl):
         
-        super().__init__(name, 'SVR', dl)
+        super().__init__('SVR', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
@@ -28,10 +28,10 @@ class SVMR(BaseModel):
 
     def set_params(self, **params):
         
-        self.kernel = params.pop('kernel', 'linear') 
-        self.gamma = params.pop('gamma', 'auto')
-        self.epsilon = params.pop('epsilon', 0.1)
-        self.C = params.pop('C', 1)
+        self.kernel = params.get('kernel', 'linear') 
+        self.gamma = params.get('gamma', 'auto')
+        self.epsilon = params.get('epsilon', 0.1)
+        self.C = params.get('C')
 
     def log_params(self):
 

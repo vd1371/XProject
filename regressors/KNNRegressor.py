@@ -15,12 +15,13 @@ from sklearn.neighbors import KNeighborsRegressor
 
 class KNNR(BaseModel):
 
-    def __init__(self, name, dl):
+    def __init__(self, dl):
         
-        super().__init__(name, 'KNN', dl)
+        super().__init__('KNN', dl)
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
+        self.dl = dl
         
         self.X_train, self.X_test, self.Y_train, self.Y_test, \
                 self.dates_train, self.dates_test = dl.load_with_test()
@@ -46,7 +47,7 @@ class KNNR(BaseModel):
                                 logger = self.log,
                                 slicer = 1,
                                 should_check_hetero = True,
-                                should_log_inverse = self.data_loader.should_log_inverse)
+                                should_log_inverse = self.dl.should_log_inverse)
 
         joblib.dump(model, self.directory + f"/KNN.pkl")
 

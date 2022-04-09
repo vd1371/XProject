@@ -1,31 +1,26 @@
 import numpy as np
 import joblib
 import pprint
+import utils
 
-from utils.BaseModel import BaseModel, R2
-from utils.SpecialPlotters import train_cv_analyzer_plotter
-from utils.AwesomeTimeIt import timeit
-from utils.RegressionReport import evaluate_regression
-from utils.FeatureImportanceReport import report_feature_importance
 
-import statsmodels.api as sm
 from scipy import stats
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import cross_validate
 from sklearn.linear_model import LinearRegression, Lasso, Ridge
 from sklearn.metrics import make_scorer
 
-class Linear(BaseModel):
+from ._LinearRegressorUtils import *
 
-    def __init__(self, name, dl):
+class Linear(utils.BaseModel):
+
+    def __init__(self, dl):
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
         self.dl = dl
-        self.name = name
 
     def initialize(self, model_name):
-        super().__init__(self.name, model_name, self.dl)
+        super().__init__(model_name, self.dl)
 
     def load(self):
         
@@ -62,7 +57,7 @@ class Linear(BaseModel):
     def fit_ridge(self):
         self.fit(model_name = 'Ridge')
 
-    @timeit
+    @utils.timeit
     def fit(self, model_name = 'linear'):
 
         self.initialize(model_name)
@@ -70,10 +65,7 @@ class Linear(BaseModel):
         self.log_params()
 
         if model_name.lower() == 'ols':
-            X_train, X_test = sm.add_constant(self.X_train), sm.add_constant(self.X_test)
-            model = sm.OLS(self.Y_train, X_train)
-            model = model.fit()
-            self.log.info(str(model.summary()))
+            fit_and_log_ols(**self.__dict__)
 
         else:
 
@@ -87,25 +79,11 @@ class Linear(BaseModel):
                                     max_iter = 10000)
 
             if self.should_cross_val:
-                r2_scorer = make_scorer(R2, greater_is_better=False)
-                mse_scorer = make_scorer(mean_squared_error, greater_is_better=False)
-                
-                scores = cross_validate(model, self.X, self.Y, 
-                                        cv=self.k, verbose=0, scoring= {'MSE': mse_scorer, 'R2' : r2_scorer})
-                
-                self.log.info( f"Cross validation is done for {model_name}. "\
-                                    f"RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f}, "\
-                                        f"MSE: {-np.mean(scores['test_MSE']):.2f},"\
-                                            f" R2: {-np.mean(scores['test_R2']):.2f}")
-            
-                print (f"|- Cross validation is done for {model_name} "\
-                            f"RMSE: {(-np.mean(scores['test_MSE']))**0.5:.2f},"\
-                                f"MSE: {-np.mean(scores['test_MSE']):.2f}, "
-                                    f"R2: {-np.mean(scores['test_R2']):.2f} -|")
+                cross_validate_model(model, model_name, **self.__dict__)
 
             model.fit(self.X_train, self.Y_train)
 
-            evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+            utils.evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
                                 ['OnTest', self.X_test, self.Y_test, self.dates_test],
                                 direc = self.directory,
                                 model = model,
@@ -117,14 +95,11 @@ class Linear(BaseModel):
 
             joblib.dump(model, self.directory + f"/{model_name}.pkl")
 
-            # Plotting the Importances
-            coeffs = dict(zip(self.X_train.columns, model.coef_))
-            report_feature_importance(self.directory, model.coef_, self.X, self.Y,
+            utils.report_feature_importance(self.directory, model.coef_, self.X, self.Y,
                                     self.n_top_features, model_name, self.log)
 
-            self.log.info(f"{model_name} Coefficients:\n" + pprint.pformat(coeffs))
 
-    @timeit
+    @utils.timeit
     def analyze(self, model_name = 'Lasso', start = 0.0000001, end=100, step=2):
 
         lin_model = Lasso if model_name.lower() is 'lasso' else Ridge
@@ -144,5 +119,5 @@ class Linear(BaseModel):
         
             i = i *step
     
-        train_cv_analyzer_plotter(train_error_list, cv_error_list, self.directory,
+        utils.train_cv_analyzer_plotter(train_error_list, cv_error_list, self.directory,
                                     f'{model_name}_Regularization_Analysis', xticks = xticks)

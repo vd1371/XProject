@@ -2,10 +2,7 @@ import numpy as np
 import joblib
 import pprint
 
-from utils.BaseModel import BaseModel, R2
-from utils.AwesomeTimeIt import timeit
-from utils.RegressionReport import evaluate_regression
-from utils.FeatureImportanceReport import report_feature_importance
+import utils
 
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import cross_validate
@@ -17,17 +14,16 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import ExtraTreesRegressor
 
-class Trees(BaseModel):
+class Trees(utils.BaseModel):
     
-    def __init__(self, name, dl):
+    def __init__(self, dl):
         
         self.n_top_features = dl.n_top_features
         self.k = dl.k
         self.dl = dl
-        self.name = name
 
     def initialize(self, model_name):
-        super().__init__(self.name, model_name, self.dl)
+        super().__init__(model_name, self.dl)
 
     def load(self):
         
@@ -64,20 +60,19 @@ class Trees(BaseModel):
             'random_state': self.dl.random_state
             }))
         
-    @timeit
+    @utils.timeit
     def fit_random_forest(self):
         self.fit(RandomForestRegressor, 'RF')
 
-    @timeit
+    @utils.timeit
     def fit_decision_tree(self):
         self.fit(DecisionTreeRegressor, 'DT')
     
-    @timeit
+    @utils.timeit
     def fit_extra_trees(self):
         self.fit(ExtraTreesRegressor, 'ET')
     
-    
-    @timeit
+    @utils.timeit
     def fit(self, tree, model_name):
 
         self.initialize(model_name)
@@ -97,7 +92,7 @@ class Trees(BaseModel):
         print (f"{model_name} is fitted")
             
         if self.should_cross_val:
-            r2_scorer = make_scorer(R2, greater_is_better=False)
+            r2_scorer = make_scorer(utils.R2, greater_is_better=False)
             mse_scorer = make_scorer(mean_squared_error, greater_is_better=False)
             
             scores = cross_validate(model, self.X, self.Y, cv=self.k, verbose=0, scoring= {'MSE': mse_scorer, 'R2' : r2_scorer})
@@ -109,7 +104,7 @@ class Trees(BaseModel):
                                 f"MSE: {-np.mean(scores['test_MSE']):.2f}, "
                                     f"R2: {-np.mean(scores['test_R2']):.2f}-|")
 
-        evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
+        utils.evaluate_regression(['OnTrain', self.X_train, self.Y_train, self.dates_train],
                                 ['OnTest', self.X_test, self.Y_test, self.dates_test],
                                 direc = self.directory,
                                 model = model,
@@ -122,7 +117,7 @@ class Trees(BaseModel):
         joblib.dump(model, self.directory + f"/{model_name}.pkl")
         
         # Plotting the Importances
-        report_feature_importance(self.directory,
+        utils.report_feature_importance(self.directory,
                                     model.feature_importances_,
                                     self.X,
                                     self.Y,
@@ -130,7 +125,7 @@ class Trees(BaseModel):
                                     model_name,
                                     self.log)
         
-    @timeit
+    @utils.timeit
     def tune_trees(self, grid = {'n_estimators': [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)],
                                 'max_features': ['auto', 'sqrt'],
                                 'max_depth': [int(x) for x in np.linspace(5, 20, num = 15)] + [None],
